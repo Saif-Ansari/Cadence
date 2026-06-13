@@ -1,37 +1,61 @@
 # Cadence — Habit & Goal Tracker
 
-> A full-stack MERN app for tracking habits, goals, daily check-ins, and focus metrics.
-> Built to solve a personal problem — and designed to scale into a SaaS product.
+> A full-stack MERN app for building consistency — track goals, habits, tasks, and daily reflections in one place.
+> Built to solve a personal problem, designed to scale into a SaaS product.
 
 ---
 
 ## Why I built this
 
-I struggle with habits. Not the tracking — the follow-through. Most apps either overwhelm you with features or reduce everything to a simple streak counter that tells you nothing useful.
+Most people fail at self-improvement in the same three ways: goals that never get finished, habits that don't stick past the first week, and no honest picture of where time actually goes.
 
-Cadence is built around a different idea: track the right things (habits, goals, time wasters, focus quality), surface meaningful patterns over time, and get out of your way.
+Existing apps solve one of these in isolation. Cadence ties all three together — goals with milestones, habits with a daily tracking loop, and a simple end-of-day reflection that closes the feedback loop. The streak you build by showing up every day is the mechanic that keeps it honest.
 
-It started as a personal tool. The plan is to make it available to anyone who has the same problem.
+It started as a personal tool. The plan is to make it available to anyone with the same problem.
 
 ---
 
 ## Status
 
-**In active development.** Designed first — 12 screens across 6 views with light and dark mode.
+**In active development — Phase 1.**
 
 | Module | Status |
 |---|---|
 | Project setup (MERN + Vite) | ✅ Done |
 | Habits CRUD API | ✅ Done |
-| Habits UI (basic) | ✅ Done |
 | Auth (JWT + User model) | 🔧 In progress |
-| Goals — CRUD end to end | ⏳ Planned |
-| Daily Check-in | ⏳ Planned |
-| Dashboard — aggregate view | ⏳ Planned |
-| Metrics & focus scores | ⏳ Planned |
+| Goals — CRUD + milestones | ⏳ Planned |
+| Tasks — CRUD + goal link | ⏳ Planned |
+| Dashboard — streak, goals, tasks, habits | ⏳ Planned |
+| Reflections — form + history | ⏳ Planned |
+| Settings — theme + account | ⏳ Planned |
 | TypeScript migration (frontend) | ⏳ Planned |
 | Tailwind CSS | ⏳ Planned |
 | Deploy | ⏳ Planned |
+
+---
+
+## Features
+
+### Phase 1 (current)
+
+- **Dashboard** — daily snapshot: login streak, active goals, today's tasks, habit grid
+- **Goals** — create goals with a deadline and milestones; track progress as milestones are completed
+- **Habits** — create habits with a weekly frequency target; mark each day done/not done; build a streak
+- **Tasks** — standalone tasks or linked to a goal; today's tasks surface on the dashboard
+- **Reflections** — optional end-of-day form: day summary, accomplishments, win of the day, time wasters, focus score (1–10); full history list
+- **Auto check-in** — logging in marks the day and increments your streak; no manual button needed
+- **Motivational quotes** — a brief, powerful quote on the dashboard and auth screens; a deliberate daily anchor
+- **Settings** — light/dark mode, account management
+
+### Phase 2 (planned)
+
+- Metrics screen — habit completion charts, goal progress, streak history
+- Focus Score trend — visualised from Reflections data
+- Time Wasters structured tracking — activity + duration; shown in Metrics
+- Habit scheduling — specific days per habit
+- Notifications — daily reminder to fill in Reflections
+- Streak pause with restrictions
 
 ---
 
@@ -48,19 +72,8 @@ It started as a personal tool. The plan is to make it available to anyone who ha
 - JWT authentication *(in progress)*
 
 **Tooling**
-- `concurrently` for running client + server together
-- REST API with consistent error shape `{ error: { code, message } }`
-
----
-
-## Features (designed)
-
-- **Dashboard** — daily snapshot: habits due, goals in progress, focus score
-- **Habits** — create habits with frequency, track streaks, mark daily completion
-- **Goals** — set goals with milestones, link habits to goals
-- **Check-in** — daily form: what did you do, what blocked you, focus rating
-- **Metrics** — weekly/monthly charts: completion rates, focus trends, time wasters
-- **Settings** — preferences, notifications, light/dark mode
+- `concurrently` — run client + server together from root
+- REST API with consistent error shape: `{ error: { code, message } }`
 
 ---
 
@@ -101,7 +114,7 @@ echo "PORT=5000" >> server/.env
 npm run dev
 ```
 
-Client runs at `http://localhost:5173`
+Client runs at `http://localhost:5173`  
 Server runs at `http://localhost:5000`
 
 ---
@@ -116,13 +129,13 @@ Server runs at `http://localhost:5000`
 | PATCH | `/api/habits/:id/toggle` | Toggle habit completion |
 | DELETE | `/api/habits/:id` | Delete a habit |
 
-More endpoints coming as each vertical slice is completed.
+More endpoints added as each feature is completed.
 
 ---
 
 ## Motivation
 
-This project is also how I'm learning full-stack development hands-on — understanding why each piece exists, what breaks without it, and how the full loop from database to UI works. Every decision is intentional and documented.
+This project is also how I'm learning full-stack development hands-on — understanding why each piece exists, what breaks without it, and how the full loop from database to UI actually works. Every decision is intentional.
 
 ---
 
