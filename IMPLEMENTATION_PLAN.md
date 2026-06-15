@@ -6,6 +6,22 @@
 
 ---
 
+## Tech decisions
+
+Decisions locked in before frontend work begins.
+
+### State management
+- **Server state (API data):** TanStack Query — handles fetching, caching, and invalidation. Every resource (habits, goals, tasks) maps to a `queryKey`. Mutations call `invalidateQueries` to keep all screens in sync automatically.
+- **Client state (browser-only):** Zustand — holds the logged-in user and theme preference. Simple store, no Redux boilerplate.
+- **Kicks in:** Weekend 3 (Auth UI) — install both libraries before writing the first page component.
+
+### UI components
+- **Plain Tailwind** for everything — inputs, buttons, badges, progress bars, cards.
+- **No component library.** The designs use a custom teal palette and specific layouts — a styled library would fight them.
+- **Exception:** if a modal needs proper accessibility (focus trapping, keyboard close), add `@radix-ui/react-dialog` as a single primitive at that point. Don't pre-install.
+
+---
+
 ## Current state
 
 | Item | Status |
