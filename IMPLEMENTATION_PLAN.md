@@ -40,9 +40,24 @@ Decisions locked in before frontend work begins.
 
 ```
 server/
-├── index.js              ← entry point: wires middleware + routes, connects DB
-├── middleware/
-│   └── auth.js           ← JWT protect() — reads token, sets req.user
+├── index.js              ← entry point: loads env, connects DB, starts server
+├── app.js                ← Express setup: middleware + routes (importable for testing)
+├── config/
+│   └── db.js             ← MongoDB connection (mongoose.connect)
+├── controllers/          ← handle req/res, validate input, call services
+│   ├── auth.controller.js
+│   ├── habits.controller.js
+│   ├── goals.controller.js
+│   ├── tasks.controller.js
+│   ├── reflections.controller.js
+│   └── dashboard.controller.js
+├── services/             ← pure business logic, no req/res, independently testable
+│   ├── auth.service.js
+│   ├── habits.service.js
+│   ├── goals.service.js
+│   ├── tasks.service.js
+│   ├── reflections.service.js
+│   └── dashboard.service.js
 ├── models/
 │   ├── User.js           ← email, passwordHash, name, loginCount
 │   ├── CheckIn.js        ← userId, date (one per user per day)
@@ -52,16 +67,24 @@ server/
 │   ├── Milestone.js      ← goalId, title, done
 │   ├── Task.js           ← userId, goalId (optional), title, dueDate, done
 │   └── Reflection.js     ← userId, date, daySummary, accomplishments, win, timeWasters, improvement, focusScore
-├── routes/
-│   ├── auth.js           ← /api/auth  (signup, login, logout, me)
-│   ├── habits.js         ← /api/habits
-│   ├── goals.js          ← /api/goals
-│   ├── tasks.js          ← /api/tasks
-│   ├── reflections.js    ← /api/reflections
-│   └── dashboard.js      ← /api/dashboard
+├── routes/               ← URL + method mapping only, calls controllers
+│   ├── auth.routes.js
+│   ├── habits.routes.js
+│   ├── goals.routes.js
+│   ├── tasks.routes.js
+│   ├── reflections.routes.js
+│   └── dashboard.routes.js
+├── middleware/
+│   └── auth.js           ← protect() — verifies JWT, attaches req.user
 ├── package.json
 └── .env
 ```
+
+**Layer responsibilities:**
+- **Route** — maps `METHOD /path` to a controller function. Nothing else.
+- **Controller** — reads `req`, validates input, calls the service, sends `res`.
+- **Service** — pure business logic. Takes plain data, returns plain data. No `req` or `res`.
+- **Model** — Mongoose schema. Defines shape and DB-level constraints.
 
 All routes under `/api/*` (except `/api/auth`) use the `protect` middleware. Every query filters by `req.user._id` — no user can touch another user's data.
 
@@ -69,10 +92,10 @@ All routes under `/api/*` (except `/api/auth`) use the `protect` middleware. Eve
 
 ```
 client/src/
-├── main.tsx              ← React root, wraps app in Router + AuthProvider
+├── main.tsx              ← React root, wraps app in Router + QueryClientProvider
 ├── App.tsx               ← route definitions (React Router)
-├── pages/
-│   ├── AuthPage.tsx      ← Login + Signup (tab/toggle between them)
+├── pages/                ← one file per screen, thin — fetch data, pass to components
+│   ├── AuthPage.tsx
 │   ├── DashboardPage.tsx
 │   ├── GoalsPage.tsx
 │   ├── HabitsPage.tsx
@@ -81,17 +104,27 @@ client/src/
 ├── components/
 │   ├── layout/
 │   │   ├── Sidebar.tsx         ← shared nav (logo, links, active state)
-│   │   └── ProtectedLayout.tsx ← wraps all auth-required pages with Sidebar
-│   └── ui/                     ← shared primitives (Button, Input, Modal, Badge, etc.)
-├── hooks/
-│   └── useAuth.ts        ← current user, login(), logout(), loading state
+│   │   └── ProtectedLayout.tsx ← wraps auth-required pages, redirects if not logged in
+│   └── ui/                     ← shared primitives (Button, Input, Badge, etc.)
+├── hooks/                ← custom React hooks (useAuth, etc.)
+├── store/                ← Zustand stores (auth state, theme)
+│   └── auth.store.ts
+├── services/             ← raw API call functions (used by TanStack Query hooks)
+│   └── auth.service.ts
 ├── lib/
-│   └── api.ts            ← fetch wrapper — attaches Authorization header automatically
-└── types/
-    └── index.ts          ← shared TypeScript types (User, Habit, Goal, etc.)
+│   └── api.ts            ← base fetch wrapper — attaches Authorization header
+├── types/
+│   └── index.ts          ← shared TypeScript interfaces (User, Habit, Goal, etc.)
+└── constants/
+    └── quotes.ts         ← motivational quotes array (cycled by loginCount)
 ```
 
-Pages are thin — they fetch data and pass it to components. Components handle rendering. `lib/api.ts` is the only place that knows about tokens.
+**Layer responsibilities:**
+- **Page** — fetches data via TanStack Query, passes it to components.
+- **Component** — renders UI, emits events up. No direct API calls.
+- **Service** — raw fetch functions called by TanStack Query. One file per resource.
+- **Store** — Zustand. Auth user and theme only. Everything else lives in TanStack Query cache.
+- **lib/api.ts** — the only place that reads the JWT from storage and attaches it to requests.
 
 ---
 
@@ -131,6 +164,7 @@ Pages are thin — they fetch data and pass it to components. Components handle 
 - [ ] `useAuth` hook — current user, login, logout
 - [ ] Protected route wrapper — redirect to `/auth` if not logged in
 - [ ] Motivational quote on auth screens (hardcoded array, cycle by `loginCount`)
+- [ ] "Forgot password?" link visible on login screen — non-functional in Phase 1 (deferred to Phase 2)
 
 ---
 
@@ -287,5 +321,6 @@ Reflections backend    ──→  Reflections frontend
 - **Auth is already in progress** — Weekend 2 may finish faster than estimated.
 - **Buffer is built in** — 13 weekends to September leaves room for life happening. If a weekend is missed, the September target still holds.
 - **Google OAuth** — deferred to polish phase. Email/password auth ships first; Google is additive.
+- **Forgot password** — deferred to Phase 2. Requires email sending (reset link via a mail service like Resend or SendGrid). Link is visible on the login screen in Phase 1 but non-functional.
 - **TypeScript strictness** — start with `"strict": false` if needed; tighten later. Don't let the type system block momentum.
 - **Dark mode** — design is done in Paper. Implementation uses Tailwind `dark:` variant + a class toggle on `<html>`. Keep it for Settings weekend.
