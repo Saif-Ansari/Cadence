@@ -55,7 +55,7 @@ Existing tools solve one of these problems in isolation. No single app ties them
 
 ### Future users (post-MVP)
 
-The app will be shaped into a SaaS product. Auth and multi-user data isolation are built in from day one to make this transition frictionless.
+The app may be opened to other users in the future. Auth and multi-user data isolation are built in from day one to support this without rework.
 
 ---
 
@@ -87,7 +87,7 @@ The app will be shaped into a SaaS product. Auth and multi-user data isolation a
 
 ### 4.1 Authentication
 
-The app requires login even for personal use. This enforces multi-user data isolation from day one and makes the SaaS transition straightforward.
+The app requires login even for personal use. This enforces multi-user data isolation from day one.
 
 **Flows:**
 - Sign up with email + password
@@ -448,7 +448,7 @@ Add depth once the core loop is working and being used daily.
 
 ### Phase 3 — Future
 
-To be defined. Likely includes SaaS infrastructure, onboarding, billing, and any AI features.
+To be defined once Phase 2 is complete and the app is being used daily.
 
 ---
 

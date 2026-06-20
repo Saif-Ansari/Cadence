@@ -1,7 +1,6 @@
 # Cadence — Habit & Goal Tracker
 
 > A full-stack MERN app for building consistency — track goals, habits, tasks, and daily reflections in one place.
-> Built to solve a personal problem, designed to scale into a SaaS product.
 
 ---
 
@@ -10,8 +9,6 @@
 Most people fail at self-improvement in the same three ways: goals that never get finished, habits that don't stick past the first week, and no honest picture of where time actually goes.
 
 Existing apps solve one of these in isolation. Cadence ties all three together — goals with milestones, habits with a daily tracking loop, and a simple end-of-day reflection that closes the feedback loop. The streak you build by showing up every day is the mechanic that keeps it honest.
-
-It started as a personal tool. The plan is to make it available to anyone with the same problem.
 
 ---
 
@@ -22,15 +19,17 @@ It started as a personal tool. The plan is to make it available to anyone with t
 | Module | Status |
 |---|---|
 | Project setup (MERN + Vite) | ✅ Done |
-| Habits CRUD API | ✅ Done |
-| Auth (JWT + User model) | 🔧 In progress |
-| Goals — CRUD + milestones | ⏳ Planned |
-| Tasks — CRUD + goal link | ⏳ Planned |
-| Dashboard — streak, goals, tasks, habits | ⏳ Planned |
-| Reflections — form + history | ⏳ Planned |
-| Settings — theme + account | ⏳ Planned |
-| TypeScript migration (frontend) | ⏳ Planned |
-| Tailwind CSS | ⏳ Planned |
+| TypeScript (frontend) | ✅ Done |
+| Tailwind CSS | ✅ Done |
+| Auth backend (JWT + User model) | ✅ Done |
+| Goals backend (CRUD + milestones) | ✅ Done |
+| Auth UI (login + signup) | ✅ Done |
+| Dashboard shell (sidebar + layout + routing) | ✅ Done |
+| Habits backend + streak logic | ⏳ Next |
+| Tasks backend + UI | ⏳ Planned |
+| Dashboard API + full UI | ⏳ Planned |
+| Reflections backend + UI | ⏳ Planned |
+| Settings (theme + account) | ⏳ Planned |
 | Deploy | ⏳ Planned |
 
 ---
@@ -45,17 +44,17 @@ It started as a personal tool. The plan is to make it available to anyone with t
 - **Tasks** — standalone tasks or linked to a goal; today's tasks surface on the dashboard
 - **Reflections** — optional end-of-day form: day summary, accomplishments, win of the day, time wasters, focus score (1–10); full history list
 - **Auto check-in** — logging in marks the day and increments your streak; no manual button needed
-- **Motivational quotes** — a brief, powerful quote on the dashboard and auth screens; a deliberate daily anchor
+- **Motivational quotes** — a brief, powerful quote on the dashboard and auth screens
 - **Settings** — light/dark mode, account management
 
 ### Phase 2 (planned)
 
 - Metrics screen — habit completion charts, goal progress, streak history
 - Focus Score trend — visualised from Reflections data
-- Time Wasters structured tracking — activity + duration; shown in Metrics
+- Time Wasters structured tracking — activity + duration
 - Habit scheduling — specific days per habit
 - Notifications — daily reminder to fill in Reflections
-- Streak pause with restrictions
+- Forgot password (requires email service)
 
 ---
 
@@ -63,13 +62,15 @@ It started as a personal tool. The plan is to make it available to anyone with t
 
 **Frontend**
 - React 18 + Vite
-- TypeScript *(migration in progress)*
-- Tailwind CSS *(to be added)*
+- TypeScript
+- Tailwind CSS v4
+- TanStack Query (server state) + Zustand (client state)
+- React Router v6
 
 **Backend**
 - Node.js + Express
 - MongoDB + Mongoose
-- JWT authentication *(in progress)*
+- JWT authentication (bcrypt + jsonwebtoken)
 
 **Tooling**
 - `concurrently` — run client + server together from root
@@ -81,17 +82,27 @@ It started as a personal tool. The plan is to make it available to anyone with t
 
 ```
 cadence/
-├── client/          # React 18 + Vite (port 5173)
+├── client/                  # React 18 + Vite (port 5173)
 │   └── src/
-│       ├── App.jsx
-│       └── main.jsx
-├── server/          # Express + Mongoose (port 5000)
-│   ├── models/
-│   │   └── Habit.js
-│   ├── routes/
-│   │   └── habits.js
-│   └── index.js
-└── package.json     # Root — starts both with concurrently
+│       ├── components/
+│       │   ├── icons/       # SVG icon components
+│       │   └── layout/      # Sidebar, ProtectedLayout
+│       ├── pages/           # AuthPage, DashboardPage, GoalsPage, ...
+│       ├── services/        # API call functions (auth.service.ts, ...)
+│       ├── store/           # Zustand stores (auth.store.ts)
+│       ├── lib/api.ts       # Base fetch wrapper (attaches JWT)
+│       ├── types/           # Shared TypeScript interfaces
+│       └── constants/       # Quotes array
+├── server/                  # Express + Mongoose (port 5000)
+│   ├── controllers/         # req/res handling
+│   ├── services/            # Pure business logic
+│   ├── models/              # Mongoose schemas
+│   ├── routes/              # URL mapping
+│   ├── middleware/auth.js   # protect() — JWT verification
+│   ├── config/db.js         # MongoDB connection
+│   ├── app.js               # Express setup
+│   └── index.js             # Entry point
+└── package.json             # Root — starts both with concurrently
 ```
 
 ---
@@ -106,9 +117,9 @@ cd cadence
 # Install all dependencies (root + client + server)
 npm run install:all
 
-# Add your MongoDB URI
-echo "MONGO_URI=your_mongodb_connection_string" > server/.env
-echo "PORT=5000" >> server/.env
+# Add environment variables
+cp server/.env.example server/.env
+# Fill in MONGO_URI, JWT_SECRET
 
 # Run both client and server
 npm run dev
@@ -121,13 +132,26 @@ Server runs at `http://localhost:5000`
 
 ## API Reference
 
+### Auth
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | `/api/auth/signup` | — | Create account, returns JWT |
+| POST | `/api/auth/login` | — | Login, returns JWT |
+| POST | `/api/auth/logout` | — | Logout (client clears token) |
+| GET | `/api/auth/me` | ✅ | Return current user |
+
+### Goals
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/api/health` | Server health check |
-| GET | `/api/habits` | Get all habits |
-| POST | `/api/habits` | Create a habit |
-| PATCH | `/api/habits/:id/toggle` | Toggle habit completion |
-| DELETE | `/api/habits/:id` | Delete a habit |
+| GET | `/api/goals` | All goals + milestones + progress % |
+| POST | `/api/goals` | Create goal |
+| PATCH | `/api/goals/:id` | Update goal |
+| DELETE | `/api/goals/:id` | Delete goal + cascade delete milestones |
+| POST | `/api/goals/:id/milestones` | Add milestone |
+| PATCH | `/api/goals/:id/milestones/:mid` | Toggle milestone done |
+| DELETE | `/api/goals/:id/milestones/:mid` | Delete milestone |
+
+All routes except `/api/auth/signup` and `/api/auth/login` require `Authorization: Bearer <token>`.
 
 More endpoints added as each feature is completed.
 
