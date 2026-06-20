@@ -10,31 +10,10 @@ but why it exists and what breaks without it.
 Every feature follows the same three-layer pattern:
 
 ```
-routes/auth.routes.js       → "POST /signup goes to authController.signup"
+routes/auth.routes.js          → "POST /signup goes to authController.signup"
 controllers/auth.controller.js → reads req, validates, calls service, sends res
-services/auth.service.js    → pure business logic — no req, no res
+services/auth.service.js       → pure business logic — no req, no res
 ```
-
-**Why split it this way?**
-
-The controller knows about HTTP. The service does not.
-
-This matters because a service function is just a regular JavaScript function:
-
-```js
-// Service — takes plain data, returns plain data
-const result = await authService.signup('Saif', 'saif@example.com', 'password123')
-
-// You can call this from:
-// - A controller (HTTP request)
-// - A test file (no server needed)
-// - A CLI script
-// - A cron job
-```
-
-If you put the business logic directly in the route handler, you can only test it
-by simulating an HTTP request. Separate it into a service and you can test it
-with a plain function call.
 
 **What each layer is allowed to touch:**
 
@@ -50,6 +29,106 @@ with a plain function call.
 - `config/db.js` — MongoDB connection. Extracted from `index.js` so it can be reused or mocked in tests.
 - `app.js` — Express setup (middleware + routes). Separated from `index.js` so you can import the app without starting the server (useful for testing with supertest).
 - `index.js` — just connects the DB and calls `app.listen`. Nothing else.
+
+---
+
+## 2. Architecture Decisions — Why These Choices
+
+### The core principle
+
+Every architecture decision in this project comes down to one idea:
+
+> **Separate things that change for different reasons. Make each piece ignorant of what it doesn't need to know.**
+
+Each layer has a different *reason to change*:
+- Route changes when the URL changes
+- Controller changes when the API contract changes
+- Service changes when the business rule changes
+
+If these are in the same function, changing a business rule means touching the
+same code that handles HTTP. You can break the API while fixing logic, or break
+logic while changing the API. Separated, a change in one layer can't affect another.
+
+When a new developer needs to fix a bug in login — they follow the chain:
+`routes → controller → service`. Three files, three minutes, zero guessing.
+
+### Why the service has no `req` or `res`
+
+HTTP is just one way to trigger business logic. The service gets called from a
+controller today. Tomorrow it could be called from:
+- A test file (no server running)
+- An admin CLI script
+- A scheduled cron job
+
+If the service needed `req` and `res`, none of those would work. Keeping HTTP
+out of the service makes the business logic independent of *how* it's triggered.
+
+### Why `app.js` is separate from `index.js`
+
+`app.listen()` is a side effect — it binds to a port. `app.js` has no side effects,
+it just builds and exports the Express app.
+
+This matters for testing: you can import `app.js` and fire requests against it
+in memory without a port being occupied:
+
+```js
+const app = require('./app')
+const request = require('supertest')
+request(app).post('/api/auth/signup').send({...}) // no server needed
+```
+
+`index.js` is the only file with side effects. You only run it when you actually
+want to start the server.
+
+### Why MongoDB over SQL (PostgreSQL, MySQL)
+
+SQL databases use fixed-column tables. To add a new field you write a migration
+— a script that alters the table, which can be risky on live data.
+
+MongoDB stores JSON documents. You can add a new field to your User model today
+and old documents without that field still work. No migration needed.
+
+For this project that matters because:
+- You're iterating fast — the schema will change as features are built
+- The data maps naturally to JSON (what React sends and receives)
+- No impedance mismatch between API responses and DB documents
+
+**The trade-off:** MongoDB doesn't enforce relationships like SQL foreign keys.
+If you delete a User, their Habits and Goals don't automatically delete — you
+handle that in the service layer. Acceptable here because we control all the code.
+
+### Why JWT over sessions
+
+Sessions store state on the server — a record per logged-in user in a DB or Redis.
+Every request the client sends a session ID, the server looks it up.
+
+JWT is stateless — the server signs a token on login, the client sends it with
+every request, the server verifies the signature. No DB lookup per request.
+
+| | Sessions | JWT |
+|---|---|---|
+| Server stores state | Yes | No |
+| DB lookup per request | Yes | No |
+| Scales horizontally | Hard — all servers need shared session store | Easy — any server can verify |
+| Logout | Easy — delete the session | Harder — token valid until expiry |
+
+For Cadence: JWT is right. Less infrastructure, stateless, scales without a
+session store. The logout trade-off is acceptable — tokens expire in 7 days and
+we'll move to httpOnly cookies before deploying.
+
+### Why bcrypt over MD5 or SHA-256
+
+MD5 and SHA-256 are designed to be *fast*. A GPU can compute billions of SHA-256
+hashes per second — an attacker with a leaked DB can brute-force common passwords
+in minutes.
+
+bcrypt is designed to be *slow*. 10 rounds = ~100ms per hash. Imperceptible to a
+user logging in. For an attacker trying millions of passwords, the difference is
+between minutes and years.
+
+bcrypt also generates a unique random salt per password automatically. Two users
+with the same password get completely different hashes. Pre-computed rainbow tables
+are useless.
 
 ---
 
@@ -408,16 +487,23 @@ no duplicate check-ins even if the user logs in twice simultaneously.
 
 ```
 server/
-├── index.js              ✅ wires middleware + routes, connects DB
+├── index.js                      ✅ loads env, connects DB, starts server
+├── app.js                        ✅ Express setup — middleware + routes
+├── config/
+│   └── db.js                     ✅ MongoDB connection
 ├── middleware/
-│   └── auth.js           ✅ protect() — JWT verification, req.user
+│   └── auth.js                   ✅ protect() — JWT verification, req.user
 ├── models/
-│   ├── User.js           ✅ email, passwordHash, name, loginCount
-│   ├── CheckIn.js        ✅ userId, date — compound unique index
-│   └── Habit.js          ⚠️  prototype — will be replaced
+│   ├── User.js                   ✅ email, passwordHash, name, loginCount
+│   ├── CheckIn.js                ✅ userId, date — compound unique index
+│   └── Habit.js                  ⚠️  prototype — will be replaced
+├── controllers/
+│   └── auth.controller.js        ✅ signup, login, logout, me
+├── services/
+│   └── auth.service.js           ✅ bcrypt, JWT, CheckIn logic
 └── routes/
-    ├── auth.js           ✅ signup, login, logout, me
-    └── habits.js         ⚠️  prototype — will be replaced
+    ├── auth.routes.js            ✅ POST /signup, /login, /logout — GET /me
+    └── habits.js                 ⚠️  prototype — will be replaced
 ```
 
 ### Endpoints live now
