@@ -1,0 +1,7 @@
+export { LogoBarsIcon } from './logo'
+export { DashboardIcon } from './dashboard'
+export { GoalsIcon } from './goals'
+export { HabitsIcon } from './habits'
+export { ReflectionsIcon } from './reflections'
+export { SettingsIcon } from './settings'
+export { LogOutIcon } from './logout'

@@ -458,7 +458,141 @@ protect() reads the Authorization header
 
 ---
 
-## 7. CheckIn — Auto Streak Tracking
+## 7. Mongoose Methods — Quick Reference
+
+### Method comparison
+
+| Method | Returns | Use when |
+|---|---|---|
+| `find(filter)` | Array | Fetching multiple documents |
+| `findOne(filter)` | Document or null | Fetching one + ownership check |
+| `findById(id)` | Document or null | Fetching by `_id` only |
+| `create(data)` | Created document | Inserting a new document |
+| `findOneAndUpdate(filter, updates, opts)` | Updated document or null | Update + need the result back |
+| `findOneAndDelete(filter)` | Deleted document or null | Delete + need to verify ownership |
+| `updateOne(filter, update, opts)` | Result object | Insert or do nothing (idempotent) |
+| `deleteMany(filter)` | Result object | Bulk delete (cascade cleanup) |
+
+### `findOneAndUpdate` in depth
+
+Takes exactly 3 arguments: `filter`, `update`, `options`.
+
+```js
+Goal.findOneAndUpdate(
+  { _id: goalId, userId },            // 1. filter
+  updates,                             // 2. update
+  { new: true, runValidators: true }  // 3. options
+)
+```
+
+**Argument 1 — filter**
+
+The WHERE clause. Find a document where ALL conditions match:
+
+```js
+{ _id: goalId, userId }
+// finds a document where _id = goalId AND userId = userId
+// if either fails — returns null
+```
+
+We always include `userId` alongside `_id`. This bakes the ownership check into
+the query — one operation instead of two. The caller can't tell whether the
+document doesn't exist or belongs to someone else — intentional.
+
+**Argument 2 — update**
+
+What to change. Two ways to write it:
+
+```js
+// Plain object — Mongoose wraps in $set automatically
+{ title: 'New title', status: 'completed' }
+
+// Explicit $set — same result
+{ $set: { title: 'New title', status: 'completed' } }
+```
+
+`$set` only changes the fields you specify. Other fields on the document are
+untouched. Without `$set`, MongoDB would replace the entire document with just
+those fields — you'd lose everything else.
+
+**Argument 3 — options**
+
+```js
+{ new: true }
+// Return the document AFTER the update
+// Default is false — returns document BEFORE update
+// Almost always want true
+
+{ runValidators: true }
+// Run schema validation on the update
+// Default is false for updates — Mongoose only validates on .save()
+// Without this, invalid enum values or wrong types slip through
+```
+
+**Return value**
+
+```js
+const goal = await Goal.findOneAndUpdate(...)
+// goal = updated document  → filter matched
+// goal = null              → filter didn't match (wrong id OR wrong userId)
+
+if (!goal) {
+  const err = new Error('Goal not found')
+  err.status = 404
+  throw err
+}
+```
+
+### Similar methods — same 3-argument shape
+
+```js
+// findOneAndDelete — filter only, no update needed
+Model.findOneAndDelete({ _id: id, userId })
+// returns deleted document or null
+
+// findOne — read only, no update
+Model.findOne({ _id: id, userId })
+// returns document or null, nothing changed
+
+// findOneAndUpdate with other operators
+Model.findOneAndUpdate(
+  { _id: id, userId },
+  { $inc: { loginCount: 1 } },  // increment instead of set
+  { new: true }
+)
+```
+
+### Common update operators
+
+| Operator | Does |
+|---|---|
+| `$set` | Set specific fields (most common) |
+| `$inc` | Increment a number by N |
+| `$push` | Add an item to an array |
+| `$pull` | Remove an item from an array |
+| `$setOnInsert` | Only set fields on insert (used with upsert) |
+
+### Ownership check pattern
+
+Every update and delete uses this — ownership baked into the filter:
+
+```js
+// ✅ Correct — ownership checked in one atomic query
+const goal = await Goal.findOneAndUpdate({ _id: goalId, userId }, updates, opts)
+if (!goal) throw notFound()
+
+// ❌ Wrong — two queries, race condition possible between them
+const goal = await Goal.findById(goalId)
+if (goal.userId !== userId) throw forbidden()
+await Goal.findByIdAndUpdate(goalId, updates)
+```
+
+The single-query version is atomic — no window between the check and the update
+where another request could interfere.
+
+---
+
+## 8. CheckIn — Auto Streak Tracking
 
 A CheckIn document records that a user logged in on a specific calendar day.
 
@@ -496,13 +630,18 @@ server/
 ├── models/
 │   ├── User.js                   ✅ email, passwordHash, name, loginCount
 │   ├── CheckIn.js                ✅ userId, date — compound unique index
+│   ├── Goal.js                   ✅ userId, title, description, deadline, status
+│   ├── Milestone.js              ✅ goalId, userId, title, done
 │   └── Habit.js                  ⚠️  prototype — will be replaced
 ├── controllers/
-│   └── auth.controller.js        ✅ signup, login, logout, me
+│   ├── auth.controller.js        ✅ signup, login, logout, me
+│   └── goals.controller.js       ✅ CRUD + milestone endpoints
 ├── services/
-│   └── auth.service.js           ✅ bcrypt, JWT, CheckIn logic
+│   ├── auth.service.js           ✅ bcrypt, JWT, CheckIn logic
+│   └── goals.service.js          ✅ goals CRUD, milestones, progress calculation
 └── routes/
     ├── auth.routes.js            ✅ POST /signup, /login, /logout — GET /me
+    ├── goals.routes.js           ✅ CRUD + nested milestone routes
     └── habits.js                 ⚠️  prototype — will be replaced
 ```
 
@@ -515,6 +654,13 @@ server/
 | POST | `/api/auth/logout` | No | Client-side only — server confirms |
 | GET | `/api/auth/me` | Yes | Return current user from token |
 | GET | `/api/health` | No | Server alive check |
+| GET | `/api/goals` | Yes | All goals with milestones + progress % |
+| POST | `/api/goals` | Yes | Create goal |
+| PATCH | `/api/goals/:id` | Yes | Update goal |
+| DELETE | `/api/goals/:id` | Yes | Delete goal + cascade delete milestones |
+| POST | `/api/goals/:id/milestones` | Yes | Add milestone |
+| PATCH | `/api/goals/:id/milestones/:mid` | Yes | Toggle milestone done |
+| DELETE | `/api/goals/:id/milestones/:mid` | Yes | Delete milestone |
 
 ---
 
