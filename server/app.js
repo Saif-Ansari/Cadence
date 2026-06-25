@@ -3,6 +3,7 @@ const cors = require('cors')
 const authRoutes = require('./routes/auth.routes')
 const goalsRoutes = require('./routes/goals.routes')
 const habitsRoutes = require('./routes/habits.routes')
+const tasksRoutes = require('./routes/tasks.routes')
 
 const app = express()
 
@@ -16,5 +17,6 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes)
 app.use('/api/goals', goalsRoutes)
 app.use('/api/habits', habitsRoutes)
+app.use('/api/tasks', tasksRoutes)
 
 module.exports = app
