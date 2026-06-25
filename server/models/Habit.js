@@ -1,34 +1,14 @@
-const mongoose = require('mongoose');
+const mongoose = require('mongoose')
 
-// This schema defines the shape of a Habit document in MongoDB.
-// Mongoose enforces this structure and adds helpful methods.
 const habitSchema = new mongoose.Schema(
   {
-    name: {
-      type: String,
-      required: [true, 'Habit name is required'],
-      trim: true,
-    },
-    description: {
-      type: String,
-      trim: true,
-      default: '',
-    },
-    frequency: {
-      type: String,
-      enum: ['daily', 'weekly'],
-      default: 'daily',
-    },
-    // Tracks whether the habit was completed today
-    isCompleted: {
-      type: Boolean,
-      default: false,
-    },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    name: { type: String, required: true, trim: true },
+    targetFrequency: { type: Number, required: true, min: 1, max: 7 },
+    description: { type: String, trim: true },
+    status: { type: String, enum: ['active', 'completed'], default: 'active' },
   },
-  // timestamps: true automatically adds createdAt and updatedAt fields
   { timestamps: true }
-);
+)
 
-// mongoose.model() compiles the schema into a Model.
-// The first argument 'Habit' becomes the collection name 'habits' in MongoDB.
-module.exports = mongoose.model('Habit', habitSchema);
+module.exports = mongoose.model('Habit', habitSchema)
