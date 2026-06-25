@@ -11,11 +11,12 @@ export interface AuthResponse {
   user: User
 }
 
-export interface Milestone {
+export interface Task {
   _id: string
-  goalId: string
   userId: string
+  goalId?: string
   title: string
+  dueDate?: string
   done: boolean
   createdAt: string
   updatedAt: string
@@ -28,7 +29,7 @@ export interface Goal {
   description?: string
   deadline: string
   status: 'active' | 'completed' | 'overdue'
-  milestones: Milestone[]
+  tasks: Task[]
   progress: number
   createdAt: string
   updatedAt: string
@@ -48,17 +49,6 @@ export interface Habit {
   status: 'active' | 'completed'
   weekGrid: HabitDay[]
   streak: number
-  createdAt: string
-  updatedAt: string
-}
-
-export interface Task {
-  _id: string
-  userId: string
-  goalId?: string
-  title: string
-  dueDate?: string
-  done: boolean
   createdAt: string
   updatedAt: string
 }

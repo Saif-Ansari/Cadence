@@ -155,20 +155,13 @@ A goal is a meaningful objective with a defined outcome and a deadline. Think of
 | Title | Text | e.g. "Learn backend development" |
 | Description | Text (optional) | More context on what this means |
 | Deadline | Date | When the goal should be completed by |
-| Milestones | List of sub-tasks | Smaller chunks that make up the goal (see below) |
+| Tasks | List (optional) | Tasks can be added in the same modal — the goal is created first, then each task is created with the returned goalId |
 
-#### Milestones
+#### Progress
 
-Large goals are broken into milestones — smaller, completable chunks.
+A goal's progress is calculated from its linked tasks: `completed tasks ÷ total tasks linked to the goal`.
 
-| Field | Type |
-|---|---|
-| Title | Text |
-| Done | Boolean (checkbox) |
-
-A goal's overall progress is calculated from how many milestones are completed: `completed milestones ÷ total milestones`.
-
-Goals without milestones can still be marked complete manually.
+Goals with no tasks show 0% until tasks are added. Goals can be manually marked complete regardless of task progress.
 
 #### Goal states
 
@@ -304,7 +297,7 @@ Open app → Reflections → Browse past entries → Review goal progress on Goa
 
 ### Goal completion flow
 ```
-Goals screen → Open goal → Mark all milestones complete → Mark goal as "Completed"
+Goals screen → Open goal → Mark all tasks done → Mark goal as "Completed"
 ```
 
 ---
@@ -317,7 +310,6 @@ Goals screen → Open goal → Mark all milestones complete → Mark goal as "Co
 | Habit | id, userId, name, targetFrequency, description, status, createdAt |
 | HabitLog | id, habitId, userId, date, done |
 | Goal | id, userId, title, description, deadline, status, createdAt |
-| Milestone | id, goalId, title, done |
 | Task | id, userId, goalId (optional), title, dueDate (optional), done, createdAt |
 | CheckIn | id, userId, date (auto-created on login, one per day) |
 | Reflection | id, userId, date, daySummary, accomplishments, win, timeWasters, improvement, focusScore (1–10) |
@@ -331,7 +323,7 @@ Goals screen → Open goal → Mark all milestones complete → Mark goal as "Co
 | Login / Sign up | `/auth` | Authentication |
 | Dashboard | `/` | Daily overview — streak, goals, tasks, habits |
 | Habits | `/habits` | Manage and track habits |
-| Goals | `/goals` | Manage goals, milestones, and linked tasks |
+| Goals | `/goals` | Manage goals and their linked tasks |
 | Reflections | `/reflections` | Daily reflection form + full history list |
 | Settings | `/settings` | Theme toggle, account |
 
@@ -353,12 +345,12 @@ What the system must be able to do in Phase 1.
 
 ### Goals
 - A user must be able to create a goal with a title, optional description, and deadline
-- A user must be able to add, edit, and delete milestones on a goal
-- A user must be able to mark a milestone as done
-- Goal progress must be calculated automatically: completed milestones ÷ total milestones
-- A goal without milestones must be manually markable as completed
+- A user must be able to add tasks to a goal from the same creation modal (goal created first, tasks use the returned goalId)
+- Goal progress must be calculated automatically: completed tasks ÷ total tasks linked to the goal
+- A goal with no tasks shows 0% and can be manually marked complete
 - A user must be able to view goals filtered by status: All, On Track, At Risk, Completed
 - A user must be able to edit and delete a goal
+- Deleting a goal unlinks its tasks — tasks are kept as standalone (not deleted)
 
 ### Habits
 - A user must be able to create a habit with a name, target frequency (days per week), and optional description
@@ -422,7 +414,7 @@ The core loop. Everything needed to use the app daily.
 | # | Feature | Description |
 |---|---|---|
 | 1 | Auth | Signup, login, logout. Auto check-in + streak on login |
-| 2 | Goals | CRUD + milestones + progress % |
+| 2 | Goals | CRUD + task-based progress % |
 | 3 | Habits | CRUD + daily check-off + weekly grid |
 | 4 | Tasks | CRUD + optional goal link + today view on dashboard |
 | 5 | Dashboard | Streak, goals, today's tasks, habits |

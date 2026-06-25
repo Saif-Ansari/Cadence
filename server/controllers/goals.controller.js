@@ -42,37 +42,4 @@ async function deleteGoal(req, res) {
   }
 }
 
-async function addMilestone(req, res) {
-  const { title } = req.body
-
-  if (!title) {
-    return res.status(400).json({ error: { code: 'MISSING_FIELDS', message: 'Title is required' } })
-  }
-
-  try {
-    const milestone = await goalsService.addMilestone(req.user._id, req.params.id, title)
-    res.status(201).json({ milestone })
-  } catch (err) {
-    res.status(err.status || 500).json({ error: { code: err.code || 'SERVER_ERROR', message: err.message } })
-  }
-}
-
-async function toggleMilestone(req, res) {
-  try {
-    const milestone = await goalsService.toggleMilestone(req.user._id, req.params.id, req.params.mid)
-    res.json({ milestone })
-  } catch (err) {
-    res.status(err.status || 500).json({ error: { code: err.code || 'SERVER_ERROR', message: err.message } })
-  }
-}
-
-async function deleteMilestone(req, res) {
-  try {
-    await goalsService.deleteMilestone(req.user._id, req.params.id, req.params.mid)
-    res.json({ message: 'Milestone deleted' })
-  } catch (err) {
-    res.status(err.status || 500).json({ error: { code: err.code || 'SERVER_ERROR', message: err.message } })
-  }
-}
-
-module.exports = { getGoals, createGoal, updateGoal, deleteGoal, addMilestone, toggleMilestone, deleteMilestone }
+module.exports = { getGoals, createGoal, updateGoal, deleteGoal }

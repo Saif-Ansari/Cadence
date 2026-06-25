@@ -37,7 +37,7 @@ Phase 2 screen designed: Metrics.
 - Motivational quote: appears on the Dashboard and on the left panel of auth screens (Login, Sign up). Serves as a daily anchor — brief, powerful, contextually relevant. Designed as a deliberate feature, not decoration.
 
 ## Data models (planned)
-- User, Goal, Milestone, Habit, HabitLog, Task, CheckIn, Reflection
+- User, Goal, Habit, HabitLog, Task, CheckIn, Reflection
 
 ## API conventions
 - Base URL: `/api`
@@ -47,7 +47,7 @@ Phase 2 screen designed: Metrics.
 
 ## Build order (vertical slices)
 1. Auth (JWT + Google OAuth) + User model
-2. Goals — CRUD + milestones
+2. Goals — CRUD + task-based progress
 3. Habits — CRUD + daily check-off + streak
 4. Tasks — CRUD + optional goal link
 5. Dashboard — streak, goals, tasks, habits
