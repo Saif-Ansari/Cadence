@@ -26,8 +26,8 @@ Existing apps solve one of these in isolation. Cadence ties all three together �
 | Auth UI (login + signup) | ✅ Done |
 | Dashboard shell (sidebar + layout + routing) | ✅ Done |
 | Habits backend + streak logic | ✅ Done |
-| Tasks backend + UI | ⏳ Next |
-| Dashboard API + full UI | ⏳ Planned |
+| Tasks backend | ✅ Done |
+| Dashboard API + full UI | ⏳ Next |
 | Reflections backend + UI | ⏳ Planned |
 | Settings (theme + account) | ⏳ Planned |
 | Deploy | ⏳ Planned |

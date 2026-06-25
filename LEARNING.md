@@ -725,19 +725,23 @@ server/
 │   ├── Goal.js                   ✅ userId, title, description, deadline, status
 │   ├── Milestone.js              ✅ goalId, userId, title, done
 │   ├── Habit.js                  ✅ userId, name, targetFrequency, description, status
-│   └── HabitLog.js               ✅ habitId, userId, date — compound unique index
+│   ├── HabitLog.js               ✅ habitId, userId, date — compound unique index
+│   └── Task.js                   ✅ userId, goalId (optional), title, dueDate, done
 ├── controllers/
 │   ├── auth.controller.js        ✅ signup, login, logout, me
 │   ├── goals.controller.js       ✅ CRUD + milestone endpoints
-│   └── habits.controller.js      ✅ CRUD + toggle endpoint
+│   ├── habits.controller.js      ✅ CRUD + toggle endpoint
+│   └── tasks.controller.js       ✅ CRUD + query filters
 ├── services/
 │   ├── auth.service.js           ✅ bcrypt, JWT, CheckIn logic
 │   ├── goals.service.js          ✅ goals CRUD, milestones, progress calculation
-│   └── habits.service.js         ✅ CRUD, streak logic, weekly grid
+│   ├── habits.service.js         ✅ CRUD, streak logic, weekly grid
+│   └── tasks.service.js          ✅ CRUD, today filter, goalId filter
 └── routes/
     ├── auth.routes.js            ✅ POST /signup, /login, /logout — GET /me
     ├── goals.routes.js           ✅ CRUD + nested milestone routes
-    └── habits.routes.js          ✅ CRUD + toggle route
+    ├── habits.routes.js          ✅ CRUD + toggle route
+    └── tasks.routes.js           ✅ CRUD
 ```
 
 ### Endpoints live now
@@ -761,6 +765,10 @@ server/
 | PATCH | `/api/habits/:id` | Yes | Update habit |
 | DELETE | `/api/habits/:id` | Yes | Delete habit + cascade delete logs |
 | PATCH | `/api/habits/:id/toggle` | Yes | Toggle a day done/not done |
+| GET | `/api/tasks` | Yes | All tasks (filters: `?goalId=`, `?done=`, `?today=true`) |
+| POST | `/api/tasks` | Yes | Create task |
+| PATCH | `/api/tasks/:id` | Yes | Update task (toggle done, edit fields) |
+| DELETE | `/api/tasks/:id` | Yes | Delete task |
 
 ---
 
@@ -768,7 +776,6 @@ server/
 
 ```
 Backend remaining:
-  ├── Tasks — CRUD + optional goal link
   └── Dashboard API — streak, goals, tasks, habits in one endpoint
 
 Frontend (all pages):
