@@ -38,8 +38,14 @@ function logout(req, res) {
   res.json({ message: 'Logged out' })
 }
 
-function me(req, res) {
-  res.json({ user: req.user })
+async function me(req, res) {
+  try {
+    const streak = await authService.getStreak(req.user._id)
+    const u = req.user
+    res.json({ user: { id: u._id, name: u.name, email: u.email, loginCount: u.loginCount, streak } })
+  } catch (err) {
+    res.status(500).json({ error: { message: err.message } })
+  }
 }
 
 module.exports = { signup, login, logout, me }

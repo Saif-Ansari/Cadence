@@ -42,10 +42,11 @@ async function login(email, password) {
   await recordCheckIn(user._id)
 
   const token = signToken(user._id)
+  const streak = await getStreak(user._id)
 
   return {
     token,
-    user: { id: user._id, name: user.name, email: user.email, loginCount: user.loginCount },
+    user: { id: user._id, name: user.name, email: user.email, loginCount: user.loginCount, streak },
   }
 }
 
@@ -60,4 +61,34 @@ async function recordCheckIn(userId) {
   )
 }
 
-module.exports = { signup, login, recordCheckIn }
+async function getStreak(userId) {
+  const checkIns = await CheckIn.find({ userId }).sort({ date: -1 })
+  if (checkIns.length === 0) return 0
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  // Walk backwards from today; if user hasn't checked in today, start from yesterday
+  let expected = new Date(today)
+  const latest = new Date(checkIns[0].date)
+  latest.setHours(0, 0, 0, 0)
+  if (latest.getTime() < today.getTime()) {
+    expected.setDate(expected.getDate() - 1)
+  }
+
+  let streak = 0
+  for (const checkIn of checkIns) {
+    const day = new Date(checkIn.date)
+    day.setHours(0, 0, 0, 0)
+    if (day.getTime() === expected.getTime()) {
+      streak++
+      expected.setDate(expected.getDate() - 1)
+    } else if (day.getTime() < expected.getTime()) {
+      break
+    }
+  }
+
+  return streak
+}
+
+module.exports = { signup, login, recordCheckIn, getStreak }
