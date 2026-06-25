@@ -258,14 +258,16 @@ The dashboard is the home screen. It gives the user a snapshot of everything wit
 
 | Section | Content |
 |---|---|
-| Streak | Consecutive login days — auto-updated on login, shown in header |
-| Motivational quote | A brief, powerful quote — a daily anchor. Chosen to reinforce the user's intent. |
-| Goals | Active goals with progress % and ON TRACK / AT RISK status |
+| Streak | Consecutive login days — shown in the greeting header row alongside the user avatar |
+| Goals | Active goals with progress % and ON TRACK / AT RISK / OVERDUE status badges |
 | Today's Tasks | Tasks due today or without a due date — check off without leaving dashboard |
-| What Matters Most | Highest-priority tasks linked to active goals |
 | Habits | Active habits with this week's completion grid |
 
 The dashboard is read + act: the user can mark habit days, tick off tasks, and see their goal progress without navigating away.
+
+**Layout:** Two-column grid. Left column (wider): Goals. Right column: Today's tasks + Habits. Greeting row spans full width at the top with streak badge and avatar on the right.
+
+**Removed:** Motivational quote (removed — added noise without enough content to justify it). "What Matters Most" section deferred — requires a priority system on tasks (Phase 2).
 
 ---
 
@@ -350,7 +352,7 @@ What the system must be able to do in Phase 1.
 - A goal with no tasks shows 0% and can be manually marked complete
 - A user must be able to view goals filtered by status: All, On Track, At Risk, Completed
 - A user must be able to edit and delete a goal
-- Deleting a goal unlinks its tasks — tasks are kept as standalone (not deleted)
+- Deleting a goal also deletes all tasks linked to it
 
 ### Habits
 - A user must be able to create a habit with a name, target frequency (days per week), and optional description
@@ -379,10 +381,11 @@ What the system must be able to do in Phase 1.
 - A user must be able to view a list of all past reflections, most recent first
 
 ### Dashboard
-- The dashboard must show the user's current login streak
-- The dashboard must show all active goals with progress percentage
+- The dashboard must show the user's current login streak in the greeting header
+- The dashboard must show all active goals with progress percentage and status badge
 - The dashboard must show today's tasks (due today or no due date)
 - The dashboard must show the current week's habit completion grid for all active habits
+- The user avatar and logout/settings access must be visible from the dashboard greeting row
 
 ### Settings
 - A user must be able to switch between light and dark mode

@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { Check } from "lucide-react";
 import { useAuthStore } from "../store/auth.store";
+import UserMenu from "../components/layout/UserMenu";
 import { goalsService } from "../services/goals.service";
 import { habitsService } from "../services/habits.service";
 import { tasksService } from "../services/tasks.service";
-import { quotes } from "../constants/quotes";
 import type { Goal, Task } from "../types";
 
 const DAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
@@ -106,24 +107,27 @@ function DashboardPage() {
   const activeGoals = goals.filter((g) => g.status !== "completed");
   const doneCount = tasks.filter((t) => t.done).length;
   const goalLinkedTasks = tasks.filter((t) => t.goalId && !t.done);
-  const quote = quotes[(user?.loginCount ?? 0) % quotes.length];
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   return (
     <div className="p-8">
-      {/* Greeting */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-slate-900">
-          {getGreeting()}, {user?.name}.
-        </h1>
-        <p className="text-sm text-slate-500 mt-1">
-          {formatFullDate()}
-          {activeGoals.length > 0 &&
-            ` · ${activeGoals.length} goal${activeGoals.length === 1 ? "" : "s"} in progress`}
-        </p>
+      {/* Greeting header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">
+            {getGreeting()}, {user?.name}.
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            {formatFullDate()}
+            {activeGoals.length > 0 &&
+              ` · ${activeGoals.length} goal${activeGoals.length === 1 ? "" : "s"} in progress`}
+          </p>
+        </div>
+        <UserMenu />
       </div>
+      <div className="border-b border-slate-100 mb-8" />
 
       {/* Two column layout */}
       <div className="grid grid-cols-5 gap-6 min-h-[calc(100vh-220px)]">
@@ -135,12 +139,20 @@ function DashboardPage() {
               <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                 Goals
               </h2>
-              <button
-                onClick={() => navigate("/goals")}
-                className="text-xs text-teal-600 hover:text-teal-700 font-medium cursor-pointer"
-              >
-                + Add goal
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => navigate("/goals")}
+                  className="text-xs text-slate-500 hover:text-slate-700 font-medium cursor-pointer"
+                >
+                  Manage
+                </button>
+                <button
+                  onClick={() => navigate("/goals")}
+                  className="text-xs text-teal-600 hover:text-teal-700 font-medium cursor-pointer"
+                >
+                  + Add goal
+                </button>
+              </div>
             </div>
 
             {goals.length === 0 ? (
@@ -242,7 +254,9 @@ function DashboardPage() {
               </div>
 
               {tasks.length === 0 ? (
-                <p className="text-sm text-slate-400">No tasks for today.</p>
+                <div className="border border-dashed border-slate-200 rounded-xl p-5 text-center">
+                  <p className="text-sm text-slate-400">No tasks for today.</p>
+                </div>
               ) : (
                 <>
                   <div className="space-y-1">
@@ -259,21 +273,7 @@ function DashboardPage() {
                               : "border-slate-300 group-hover:border-teal-400"
                           }`}
                         >
-                          {task.done && (
-                            <svg
-                              className="w-2.5 h-2.5 text-white"
-                              viewBox="0 0 10 10"
-                              fill="none"
-                            >
-                              <path
-                                d="M1.5 5l2.5 2.5 4.5-5"
-                                stroke="currentColor"
-                                strokeWidth="1.5"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
-                          )}
+                          {task.done && <Check size={10} className="text-white" strokeWidth={3} />}
                         </div>
                         <span
                           className={`text-sm transition-colors ${task.done ? "line-through text-slate-400" : "text-slate-700"}`}
@@ -312,9 +312,9 @@ function DashboardPage() {
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => navigate("/habits")}
-                    className="text-xs text-slate-400 hover:text-slate-600 font-medium cursor-pointer"
+                    className="text-xs text-slate-500 hover:text-slate-700 font-medium cursor-pointer"
                   >
-                    Manage →
+                    Manage
                   </button>
                   <button
                     onClick={() => navigate("/habits")}
@@ -326,7 +326,9 @@ function DashboardPage() {
               </div>
 
               {habits.length === 0 ? (
-                <p className="text-sm text-slate-400">No habits yet.</p>
+                <div className="border border-dashed border-slate-200 rounded-xl p-5 text-center">
+                  <p className="text-sm text-slate-400">No habits yet.</p>
+                </div>
               ) : (
                 <div>
                   <div className="grid grid-cols-[1fr_repeat(7,_20px)] gap-1 mb-2 items-center">
@@ -381,16 +383,6 @@ function DashboardPage() {
           </div>
           {/* end flex-1 */}
 
-          {/* Quote — pinned to bottom */}
-          {quote && (
-            <div className="mt-6 bg-slate-50 border border-slate-100 rounded-xl p-4">
-              <div className="text-3xl text-slate-300 font-serif leading-none select-none">
-                &ldquo;
-              </div>
-              <p className="text-sm text-slate-600 italic">{quote.text}</p>
-              <p className="text-xs text-slate-400 mt-3">— {quote.author}</p>
-            </div>
-          )}
         </div>
       </div>
     </div>

@@ -59,8 +59,8 @@ async function deleteGoal(userId, goalId) {
     throw err
   }
 
-  // Unlink tasks that belonged to this goal — keep them as standalone tasks
-  await Task.updateMany({ goalId }, { $unset: { goalId: 1 } })
+  // Delete tasks that belonged to this goal
+  await Task.deleteMany({ goalId })
 }
 
 module.exports = { getGoals, createGoal, updateGoal, deleteGoal }

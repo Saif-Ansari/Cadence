@@ -8,7 +8,7 @@ Learn backend development hands-on while building a real portfolio project.
 taught as we build — why we use it, what breaks without it, what the trade-offs are.
 
 ## Stack
-- **Frontend:** React 18, Vite, Tailwind (to be added), TypeScript (to be added)
+- **Frontend:** React 18, Vite, Tailwind, TypeScript, Lucide React (icons)
 - **Backend:** Node.js, Express, MongoDB, Mongoose
 - **Package manager:** npm
 - **Dev:** `npm run dev` from root (runs both client + server via concurrently)

@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router-dom'
-import { LogoBarsIcon, DashboardIcon, GoalsIcon, HabitsIcon, ReflectionsIcon, SettingsIcon } from '../icons'
+import { LayoutDashboard, Target, ListChecks, NotebookPen, Settings } from 'lucide-react'
+import { LogoBarsIcon } from '../icons'
 
 const navItems = [
-  { path: '/', label: 'Dashboard', icon: DashboardIcon },
-  { path: '/goals', label: 'Goals', icon: GoalsIcon },
-  { path: '/habits', label: 'Habits', icon: HabitsIcon },
-  { path: '/reflections', label: 'Reflections', icon: ReflectionsIcon },
+  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/goals', label: 'Goals', icon: Target },
+  { path: '/habits', label: 'Habits', icon: ListChecks },
+  { path: '/reflections', label: 'Reflections', icon: NotebookPen },
 ]
 
 function Sidebar() {
@@ -35,7 +36,7 @@ function Sidebar() {
               }`
             }
           >
-            <Icon />
+            <Icon size={16} />
             {label}
           </NavLink>
         ))}
@@ -53,7 +54,7 @@ function Sidebar() {
             }`
           }
         >
-          <SettingsIcon />
+          <Settings size={16} />
           Settings
         </NavLink>
       </div>
