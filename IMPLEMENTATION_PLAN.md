@@ -317,7 +317,7 @@ Reflections backend    ──→  Reflections frontend
 
 ## Notes
 
-- **Habits CRUD is already done** — Weekend 6 only needs HabitLog + streak + frontend.
+- **Habits backend is done** — Weekend 6 only needs the frontend (weekly grid UI, toggle, create/delete).
 - **Auth is already in progress** — Weekend 2 may finish faster than estimated.
 - **Buffer is built in** — 13 weekends to September leaves room for life happening. If a weekend is missed, the September target still holds.
 - **Google OAuth** — deferred to polish phase. Email/password auth ships first; Google is additive.

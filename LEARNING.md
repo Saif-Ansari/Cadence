@@ -592,7 +592,99 @@ where another request could interfere.
 
 ---
 
-## 8. CheckIn — Auto Streak Tracking
+## 8. Habits — HabitLog, Date Normalization, Streak Logic
+
+### Why two models instead of one
+
+The `Habit` document stores the definition — name, target, description. It never changes when you check off a day.
+
+Every day you mark a habit done is a separate `HabitLog` document. This keeps history clean and queryable:
+
+```
+Habit:    { name: "Read", targetFrequency: 5 }
+HabitLog: { habitId, userId, date: 2026-06-21, done: true }
+HabitLog: { habitId, userId, date: 2026-06-22, done: true }
+```
+
+If logs were stored as an array inside the Habit document, it would grow unboundedly and make historical queries painful.
+
+### Date normalization — why midnight UTC
+
+HabitLog stores a `Date`. The problem with a full timestamp like `2026-06-21T23:45:00.000Z`:
+- Querying "did user log June 21?" becomes a range query (`>= midnight`, `< next midnight`)
+- Two logs on the same day would have different timestamps and the unique index wouldn't catch duplicates
+
+The fix: always normalize to midnight before saving or querying:
+
+```js
+function normalizeDate(date) {
+  const d = new Date(date)
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+// 2026-06-21T23:45:00 → 2026-06-21T00:00:00.000Z
+// 2026-06-21T08:00:00 → 2026-06-21T00:00:00.000Z
+// Now equality check works: date === June 21 midnight
+```
+
+### Compound unique index
+
+```js
+habitLogSchema.index({ habitId: 1, userId: 1, date: 1 }, { unique: true })
+```
+
+Same pattern as CheckIn. Enforces one log per user per habit per day at the database level. Without it, a double-click on the frontend could insert two logs.
+
+### Toggle pattern — create or delete, never update
+
+When a user clicks a day on the habit grid:
+- If no log exists for that date → create one (mark done)
+- If a log exists for that date → delete it (mark not done)
+
+This means there are no `done: false` records in the DB. Every `HabitLog` that exists means the habit was completed. Cleaner than flipping a boolean.
+
+```js
+const existing = await HabitLog.findOne({ habitId, userId, date: normalized })
+if (existing) {
+  await existing.deleteOne()
+  return { done: false }
+}
+await HabitLog.create({ habitId, userId, date: normalized })
+return { done: true }
+```
+
+### Streak calculation algorithm
+
+A streak = consecutive weeks where `count of done days >= targetFrequency`.
+
+The current week is always skipped — if today is Wednesday and your target is 5, you've only had 3 days. Breaking the streak here would be wrong.
+
+```
+1. Group all logs by week (use the Monday of each week as the key)
+2. Start from last week, walk backwards
+3. Each week: count done days
+4. If count >= targetFrequency → streak++, go back another week
+5. If count < targetFrequency → stop
+```
+
+Finding the Monday of any date:
+```js
+function getMondayOf(date) {
+  const d = normalizeDate(date)
+  const day = d.getDay()           // 0=Sun, 1=Mon ... 6=Sat
+  const diff = day === 0 ? 6 : day - 1  // Sunday needs to go back 6 days
+  d.setDate(d.getDate() - diff)
+  return d
+}
+```
+
+### Client sends the date, server normalizes it
+
+The toggle endpoint accepts a `date` from the request body rather than using `new Date()` server-side. Reason: a habit completed at 11:58pm but logged after midnight should be recorded for the previous day. The client knows the user's intent — the server just normalizes it to midnight and stores it.
+
+---
+
+## 9. CheckIn — Auto Streak Tracking
 
 A CheckIn document records that a user logged in on a specific calendar day.
 
@@ -617,7 +709,7 @@ no duplicate check-ins even if the user logs in twice simultaneously.
 
 ---
 
-## 8. What We've Built So Far
+## 10. What We've Built So Far
 
 ```
 server/
@@ -632,22 +724,25 @@ server/
 │   ├── CheckIn.js                ✅ userId, date — compound unique index
 │   ├── Goal.js                   ✅ userId, title, description, deadline, status
 │   ├── Milestone.js              ✅ goalId, userId, title, done
-│   └── Habit.js                  ⚠️  prototype — will be replaced
+│   ├── Habit.js                  ✅ userId, name, targetFrequency, description, status
+│   └── HabitLog.js               ✅ habitId, userId, date — compound unique index
 ├── controllers/
 │   ├── auth.controller.js        ✅ signup, login, logout, me
-│   └── goals.controller.js       ✅ CRUD + milestone endpoints
+│   ├── goals.controller.js       ✅ CRUD + milestone endpoints
+│   └── habits.controller.js      ✅ CRUD + toggle endpoint
 ├── services/
 │   ├── auth.service.js           ✅ bcrypt, JWT, CheckIn logic
-│   └── goals.service.js          ✅ goals CRUD, milestones, progress calculation
+│   ├── goals.service.js          ✅ goals CRUD, milestones, progress calculation
+│   └── habits.service.js         ✅ CRUD, streak logic, weekly grid
 └── routes/
     ├── auth.routes.js            ✅ POST /signup, /login, /logout — GET /me
     ├── goals.routes.js           ✅ CRUD + nested milestone routes
-    └── habits.js                 ⚠️  prototype — will be replaced
+    └── habits.routes.js          ✅ CRUD + toggle route
 ```
 
 ### Endpoints live now
 
-| Method | Path | Auth required | What it does |
+| Method | Path | Auth | What it does |
 |---|---|---|---|
 | POST | `/api/auth/signup` | No | Create account, return JWT |
 | POST | `/api/auth/login` | No | Verify credentials, return JWT, record check-in |
@@ -661,23 +756,28 @@ server/
 | POST | `/api/goals/:id/milestones` | Yes | Add milestone |
 | PATCH | `/api/goals/:id/milestones/:mid` | Yes | Toggle milestone done |
 | DELETE | `/api/goals/:id/milestones/:mid` | Yes | Delete milestone |
+| GET | `/api/habits` | Yes | All habits with weekGrid + streak |
+| POST | `/api/habits` | Yes | Create habit |
+| PATCH | `/api/habits/:id` | Yes | Update habit |
+| DELETE | `/api/habits/:id` | Yes | Delete habit + cascade delete logs |
+| PATCH | `/api/habits/:id/toggle` | Yes | Toggle a day done/not done |
 
 ---
 
-## 9. What's Next
+## 11. What's Next
 
 ```
-Phase 1 remaining:
-  └── Frontend auth UI (Weekend 3)
-      ├── React Router setup
-      ├── Login + Signup screens
-      ├── useAuth hook (Zustand)
-      └── Protected route wrapper
+Backend remaining:
+  ├── Tasks — CRUD + optional goal link
+  └── Dashboard API — streak, goals, tasks, habits in one endpoint
 
-Phase 2:
-  ├── Goals backend + frontend
-  ├── Habits (proper) backend + frontend
-  └── Tasks backend + frontend
+Frontend (all pages):
+  ├── Goals screen
+  ├── Habits screen
+  ├── Tasks screen
+  ├── Dashboard full UI
+  ├── Reflections
+  └── Settings
 ```
 
 ---

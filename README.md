@@ -25,8 +25,8 @@ Existing apps solve one of these in isolation. Cadence ties all three together �
 | Goals backend (CRUD + milestones) | ✅ Done |
 | Auth UI (login + signup) | ✅ Done |
 | Dashboard shell (sidebar + layout + routing) | ✅ Done |
-| Habits backend + streak logic | ⏳ Next |
-| Tasks backend + UI | ⏳ Planned |
+| Habits backend + streak logic | ✅ Done |
+| Tasks backend + UI | ⏳ Next |
 | Dashboard API + full UI | ⏳ Planned |
 | Reflections backend + UI | ⏳ Planned |
 | Settings (theme + account) | ⏳ Planned |
