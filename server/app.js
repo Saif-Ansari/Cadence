@@ -5,6 +5,7 @@ const goalsRoutes = require('./routes/goals.routes')
 const habitsRoutes = require('./routes/habits.routes')
 const tasksRoutes = require('./routes/tasks.routes')
 const stepsRoutes = require('./routes/steps.routes')
+const reflectionsRoutes = require('./routes/reflections.routes')
 
 const app = express()
 
@@ -20,5 +21,6 @@ app.use('/api/goals', goalsRoutes)
 app.use('/api/habits', habitsRoutes)
 app.use('/api/tasks', tasksRoutes)
 app.use('/api/steps', stepsRoutes)
+app.use('/api/reflections', reflectionsRoutes)
 
 module.exports = app

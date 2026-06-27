@@ -63,6 +63,20 @@ export interface Habit {
   updatedAt: string
 }
 
+export interface Reflection {
+  _id: string
+  userId: string
+  date: string
+  overallDay?: string
+  accomplished?: string
+  win?: string
+  wastedTime?: string
+  improvement?: string
+  focusScore?: number
+  createdAt: string
+  updatedAt: string
+}
+
 export interface HabitWeekData {
   label: string
   rate: number
