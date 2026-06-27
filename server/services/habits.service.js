@@ -122,4 +122,44 @@ async function logHabit(userId, habitId, date) {
   return { done: true }
 }
 
-module.exports = { getHabits, createHabit, updateHabit, deleteHabit, logHabit }
+async function getConsistency(userId) {
+  const habits = await Habit.find({ userId, status: 'active' }).sort({ createdAt: -1 })
+  if (habits.length === 0) return []
+
+  const today = normalizeDate(new Date())
+  const thisMonday = getMondayOf(today)
+
+  // Start of 5-week window (4 weeks back from this Monday)
+  const startDate = new Date(thisMonday)
+  startDate.setDate(startDate.getDate() - 28)
+
+  const logs = await HabitLog.find({ userId, date: { $gte: startDate } })
+
+  // Build week start dates oldest → newest
+  const weeks = Array.from({ length: 5 }, (_, i) => {
+    const monday = new Date(thisMonday)
+    monday.setDate(monday.getDate() - (4 - i) * 7)
+    return monday
+  })
+
+  return habits.map((habit) => {
+    const habitLogs = logs.filter((l) => l.habitId.toString() === habit._id.toString())
+
+    const weekData = weeks.map((weekStart, idx) => {
+      const weekEnd = new Date(weekStart)
+      weekEnd.setDate(weekEnd.getDate() + 7)
+      const count = habitLogs.filter((l) => {
+        const d = normalizeDate(l.date)
+        return d >= weekStart && d < weekEnd
+      }).length
+      return {
+        label: idx === 4 ? 'Now' : `W${idx + 1}`,
+        rate: Math.min(count / habit.targetFrequency, 1),
+      }
+    })
+
+    return { habitId: habit._id, name: habit.name, weeks: weekData }
+  })
+}
+
+module.exports = { getHabits, createHabit, updateHabit, deleteHabit, logHabit, getConsistency }

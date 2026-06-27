@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { Check } from "lucide-react";
+import { Check, Trash2, X } from "lucide-react";
+import DeletePopover from "../components/ui/DeletePopover";
 import { useAuthStore } from "../store/auth.store";
 import UserMenu from "../components/layout/UserMenu";
 import { goalsService } from "../services/goals.service";
@@ -73,6 +75,10 @@ function DashboardPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  const [showAddTask, setShowAddTask] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [confirmDeleteTaskId, setConfirmDeleteTaskId] = useState<string | null>(null);
+
   const { data: goalsData } = useQuery({
     queryKey: ["goals"],
     queryFn: () => goalsService.getGoals(),
@@ -94,6 +100,20 @@ function DashboardPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tasks"] }),
   });
 
+  const createTask = useMutation({
+    mutationFn: (title: string) => tasksService.createTask({ title }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      setNewTaskTitle("");
+      setShowAddTask(false);
+    },
+  });
+
+  const deleteTask = useMutation({
+    mutationFn: (id: string) => tasksService.deleteTask(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tasks"] }),
+  });
+
   const toggleHabit = useMutation({
     mutationFn: ({ id, date }: { id: string; date: string }) =>
       habitsService.toggleDay(id, date),
@@ -106,7 +126,6 @@ function DashboardPage() {
 
   const activeGoals = goals.filter((g) => g.status !== "completed");
   const doneCount = tasks.filter((t) => t.done).length;
-  const goalLinkedTasks = tasks.filter((t) => t.goalId && !t.done);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -139,20 +158,12 @@ function DashboardPage() {
               <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                 Goals
               </h2>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => navigate("/goals")}
-                  className="text-xs text-slate-500 hover:text-slate-700 font-medium cursor-pointer"
-                >
-                  Manage
-                </button>
-                <button
-                  onClick={() => navigate("/goals")}
-                  className="text-xs text-teal-600 hover:text-teal-700 font-medium cursor-pointer"
-                >
-                  + Add goal
-                </button>
-              </div>
+              <button
+                onClick={() => navigate("/goals")}
+                className="text-xs text-teal-600 hover:text-teal-700 font-medium cursor-pointer"
+              >
+                + Add goal
+              </button>
             </div>
 
             {goals.length === 0 ? (
@@ -205,34 +216,6 @@ function DashboardPage() {
             )}
           </div>
 
-          {/* What Matters Most Today */}
-          {goalLinkedTasks.length > 0 && (
-            <div>
-              <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
-                What matters most today
-              </h2>
-              <div className="bg-teal-50 rounded-xl p-4 space-y-3">
-                {goalLinkedTasks.map((task) => {
-                  const linkedGoal = goals.find((g) => g._id === task.goalId);
-                  return (
-                    <div key={task._id} className="flex items-start gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-teal-600 mt-1.5 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-medium text-teal-900">
-                          {task.title}
-                        </p>
-                        {linkedGoal && (
-                          <p className="text-xs text-teal-600 mt-0.5">
-                            Linked to: {linkedGoal.title}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Right column */}
@@ -246,59 +229,113 @@ function DashboardPage() {
                   Today
                 </h2>
                 <button
-                  onClick={() => navigate("/tasks")}
+                  onClick={() => setShowAddTask(true)}
                   className="text-xs text-teal-600 hover:text-teal-700 font-medium cursor-pointer"
                 >
                   + Add task
                 </button>
               </div>
 
-              {tasks.length === 0 ? (
+              {tasks.length === 0 && !showAddTask ? (
                 <div className="border border-dashed border-slate-200 rounded-xl p-5 text-center">
                   <p className="text-sm text-slate-400">No tasks for today.</p>
                 </div>
               ) : (
                 <>
-                  <div className="space-y-1">
-                    {tasks.map((task) => (
-                      <button
-                        key={task._id}
-                        onClick={() => toggleTask.mutate(task)}
-                        className="flex items-center gap-3 w-full text-left py-1.5 group cursor-pointer"
-                      >
-                        <div
-                          className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
-                            task.done
-                              ? "bg-teal-600 border-teal-600"
-                              : "border-slate-300 group-hover:border-teal-400"
-                          }`}
-                        >
-                          {task.done && <Check size={10} className="text-white" strokeWidth={3} />}
-                        </div>
-                        <span
-                          className={`text-sm transition-colors ${task.done ? "line-through text-slate-400" : "text-slate-700"}`}
-                        >
-                          {task.title}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
+                  {tasks.length > 0 && (
+                    <>
+                      <div className="space-y-1">
+                        {tasks.map((task) => (
+                          <div
+                            key={task._id}
+                            className="flex items-center gap-2 py-1.5 group"
+                          >
+                            <button
+                              onClick={() => toggleTask.mutate(task)}
+                              className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors cursor-pointer ${
+                                task.done
+                                  ? "bg-teal-600 border-teal-600"
+                                  : "border-slate-300 hover:border-teal-400"
+                              }`}
+                            >
+                              {task.done && <Check size={10} className="text-white" strokeWidth={3} />}
+                            </button>
+                            <span
+                              onClick={() => toggleTask.mutate(task)}
+                              className={`flex-1 text-sm cursor-pointer transition-colors ${task.done ? "line-through text-slate-400" : "text-slate-700"}`}
+                            >
+                              {task.title}
+                            </span>
+                            <div className="relative">
+                              <button
+                                onClick={() => setConfirmDeleteTaskId(confirmDeleteTaskId === task._id ? null : task._id)}
+                                className="p-1 text-red-400 hover:text-red-600 transition-colors cursor-pointer"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                              {confirmDeleteTaskId === task._id && (
+                                <DeletePopover
+                                  title="Delete task"
+                                  itemName={task.title}
+                                  onConfirm={() => { deleteTask.mutate(task._id); setConfirmDeleteTaskId(null); }}
+                                  onCancel={() => setConfirmDeleteTaskId(null)}
+                                />
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
 
-                  <div className="mt-3 pt-3 border-t border-slate-100">
-                    <span className="text-xs text-slate-400">
-                      {doneCount} of {tasks.length} done
-                    </span>
-                    <div className="h-1 bg-slate-100 rounded-full overflow-hidden mt-1.5">
-                      <div
-                        className="h-full bg-teal-600 rounded-full transition-all"
-                        style={{
-                          width: tasks.length
-                            ? `${(doneCount / tasks.length) * 100}%`
-                            : "0%",
-                        }}
+                      <div className="mt-3 pt-3 border-t border-slate-100">
+                        <span className="text-xs text-slate-400">
+                          {doneCount} of {tasks.length} done
+                        </span>
+                        <div className="h-1 bg-slate-100 rounded-full overflow-hidden mt-1.5">
+                          <div
+                            className="h-full bg-teal-600 rounded-full transition-all"
+                            style={{
+                              width: tasks.length
+                                ? `${(doneCount / tasks.length) * 100}%`
+                                : "0%",
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {showAddTask && (
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (newTaskTitle.trim()) createTask.mutate(newTaskTitle.trim());
+                      }}
+                      className={`flex items-center gap-2 ${tasks.length > 0 ? "mt-3" : ""}`}
+                    >
+                      <input
+                        autoFocus
+                        type="text"
+                        value={newTaskTitle}
+                        onChange={(e) => setNewTaskTitle(e.target.value)}
+                        placeholder="Task title…"
+                        className="flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
                       />
-                    </div>
-                  </div>
+                      <button
+                        type="submit"
+                        disabled={!newTaskTitle.trim() || createTask.isPending}
+                        className="px-3 py-1.5 text-sm font-medium bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 cursor-pointer"
+                      >
+                        Add
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowAddTask(false); setNewTaskTitle(""); }}
+                        className="p-1.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      >
+                        <X size={15} />
+                      </button>
+                    </form>
+                  )}
                 </>
               )}
             </div>
@@ -309,20 +346,12 @@ function DashboardPage() {
                 <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                   Habits
                 </h2>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => navigate("/habits")}
-                    className="text-xs text-slate-500 hover:text-slate-700 font-medium cursor-pointer"
-                  >
-                    Manage
-                  </button>
-                  <button
-                    onClick={() => navigate("/habits")}
-                    className="text-xs text-teal-600 hover:text-teal-700 font-medium cursor-pointer"
-                  >
-                    + Add habit
-                  </button>
-                </div>
+                <button
+                  onClick={() => navigate("/habits")}
+                  className="text-xs text-teal-600 hover:text-teal-700 font-medium cursor-pointer"
+                >
+                  + Add habit
+                </button>
               </div>
 
               {habits.length === 0 ? (

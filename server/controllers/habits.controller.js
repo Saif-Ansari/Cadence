@@ -55,4 +55,13 @@ async function logHabit(req, res) {
   }
 }
 
-module.exports = { getHabits, createHabit, updateHabit, deleteHabit, logHabit }
+async function getConsistency(req, res) {
+  try {
+    const data = await habitsService.getConsistency(req.user._id)
+    res.json({ consistency: data })
+  } catch (err) {
+    res.status(500).json({ error: { message: err.message } })
+  }
+}
+
+module.exports = { getHabits, createHabit, updateHabit, deleteHabit, logHabit, getConsistency }

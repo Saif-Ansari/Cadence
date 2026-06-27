@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Pencil, CheckCircle, Trash2, Check } from 'lucide-react'
+import DeletePopover from '../components/ui/DeletePopover'
 import UserMenu from '../components/layout/UserMenu'
 import { goalsService } from '../services/goals.service'
-import { tasksService } from '../services/tasks.service'
+import { stepsService } from '../services/steps.service'
 import type { Goal } from '../types'
 
 type TabFilter = 'all' | 'on-track' | 'at-risk' | 'completed'
@@ -61,15 +62,30 @@ function GoalsPage() {
   const [tab, setTab] = useState<TabFilter>('all')
   const [showModal, setShowModal] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
-  const [addingTaskGoalId, setAddingTaskGoalId] = useState<string | null>(null)
-  const [newTaskTitle, setNewTaskTitle] = useState('')
+  const [confirmDeleteStepId, setConfirmDeleteStepId] = useState<string | null>(null)
+  const [addingStepGoalId, setAddingStepGoalId] = useState<string | null>(null)
+  const [newStepTitle, setNewStepTitle] = useState('')
+  const [newStepDescription, setNewStepDescription] = useState('')
+
+  function openAddStep(goalId: string) {
+    setAddingStepGoalId(goalId)
+    setNewStepTitle('')
+    setNewStepDescription('')
+  }
+
+  function closeAddStep() {
+    setAddingStepGoalId(null)
+    setNewStepTitle('')
+    setNewStepDescription('')
+  }
 
   // Create form
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [deadline, setDeadline] = useState('')
-  const [taskDraft, setTaskDraft] = useState('')
-  const [taskInputs, setTaskInputs] = useState<string[]>([])
+  const [stepDraft, setStepDraft] = useState('')
+  const [stepDraftDescription, setStepDraftDescription] = useState('')
+  const [stepInputs, setStepInputs] = useState<{ title: string; description: string }[]>([])
   const [submitting, setSubmitting] = useState(false)
 
   // Edit form
@@ -84,13 +100,10 @@ function GoalsPage() {
     queryFn: () => goalsService.getGoals(),
   })
 
-  const toggleTask = useMutation({
+  const toggleStep = useMutation({
     mutationFn: ({ id, done }: { id: string; done: boolean }) =>
-      tasksService.updateTask(id, { done }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['goals'] })
-      queryClient.invalidateQueries({ queryKey: ['tasks'] })
-    },
+      stepsService.updateStep(id, { done }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['goals'] }),
   })
 
   const deleteGoal = useMutation({
@@ -103,9 +116,7 @@ function GoalsPage() {
 
   const markComplete = useMutation({
     mutationFn: (id: string) => goalsService.updateGoal(id, { status: 'completed' }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['goals'] })
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['goals'] }),
   })
 
   const updateGoal = useMutation({
@@ -113,6 +124,25 @@ function GoalsPage() {
       goalsService.updateGoal(id, data),
     onSuccess: () => {
       setEditingGoal(null)
+      queryClient.invalidateQueries({ queryKey: ['goals'] })
+    },
+  })
+
+  const deleteStep = useMutation({
+    mutationFn: (id: string) => stepsService.deleteStep(id),
+    onSuccess: () => {
+      setConfirmDeleteStepId(null)
+      queryClient.invalidateQueries({ queryKey: ['goals'] })
+    },
+  })
+
+  const addStep = useMutation({
+    mutationFn: ({ title, description, goalId }: { title: string; description?: string; goalId: string }) =>
+      stepsService.createStep({ title, description, goalId }),
+    onSuccess: () => {
+      setAddingStepGoalId(null)
+      setNewStepTitle('')
+      setNewStepDescription('')
       queryClient.invalidateQueries({ queryKey: ['goals'] })
     },
   })
@@ -142,21 +172,10 @@ function GoalsPage() {
     }
   }
 
-  const addTask = useMutation({
-    mutationFn: ({ title, goalId }: { title: string; goalId: string }) =>
-      tasksService.createTask({ title, goalId }),
-    onSuccess: () => {
-      setAddingTaskGoalId(null)
-      setNewTaskTitle('')
-      queryClient.invalidateQueries({ queryKey: ['goals'] })
-      queryClient.invalidateQueries({ queryKey: ['tasks'] })
-    },
-  })
-
-  function submitNewTask(goalId: string) {
-    const trimmed = newTaskTitle.trim()
+  function submitNewStep(goalId: string) {
+    const trimmed = newStepTitle.trim()
     if (!trimmed) return
-    addTask.mutate({ title: trimmed, goalId })
+    addStep.mutate({ title: trimmed, description: newStepDescription.trim() || undefined, goalId })
   }
 
   const goals = data?.goals ?? []
@@ -172,23 +191,25 @@ function GoalsPage() {
     return true
   })
 
-  function addTaskToList() {
-    const trimmed = taskDraft.trim()
+  function addStepToList() {
+    const trimmed = stepDraft.trim()
     if (!trimmed) return
-    setTaskInputs((prev) => [...prev, trimmed])
-    setTaskDraft('')
+    setStepInputs((prev) => [...prev, { title: trimmed, description: stepDraftDescription.trim() }])
+    setStepDraft('')
+    setStepDraftDescription('')
   }
 
-  function removeTask(i: number) {
-    setTaskInputs((prev) => prev.filter((_, idx) => idx !== i))
+  function removeStepFromList(i: number) {
+    setStepInputs((prev) => prev.filter((_, idx) => idx !== i))
   }
 
   function resetModal() {
     setTitle('')
     setDescription('')
     setDeadline('')
-    setTaskDraft('')
-    setTaskInputs([])
+    setStepDraft('')
+    setStepDraftDescription('')
+    setStepInputs([])
     setSubmitting(false)
     setShowModal(false)
   }
@@ -197,22 +218,18 @@ function GoalsPage() {
     e.preventDefault()
     if (!title.trim() || !deadline) return
     setSubmitting(true)
-
     try {
       const { goal } = await goalsService.createGoal({
         title: title.trim(),
         description: description.trim() || undefined,
         deadline,
       })
-
-      if (taskInputs.length > 0) {
+      if (stepInputs.length > 0) {
         await Promise.all(
-          taskInputs.map((t) => tasksService.createTask({ title: t, goalId: goal._id }))
+          stepInputs.map((s) => stepsService.createStep({ title: s.title, description: s.description || undefined, goalId: goal._id }))
         )
       }
-
       queryClient.invalidateQueries({ queryKey: ['goals'] })
-      queryClient.invalidateQueries({ queryKey: ['tasks'] })
       resetModal()
     } catch {
       setSubmitting(false)
@@ -270,6 +287,9 @@ function GoalsPage() {
         <div className='space-y-4'>
           {filtered.map((goal) => {
             const status = computeGoalStatus(goal)
+            const pendingSteps = goal.steps.filter((s) => !s.done).length
+            const blocked = pendingSteps > 0
+
             return (
               <div key={goal._id} className='border border-slate-200 rounded-xl p-5'>
 
@@ -301,67 +321,46 @@ function GoalsPage() {
                     </button>
 
                     {/* Mark complete */}
-                    {goal.status !== 'completed' && (() => {
-                      const pendingCount = goal.tasks.filter((t) => !t.done).length
-                      const blocked = pendingCount > 0
-                      return (
-                        <button
-                          onClick={() => !blocked && markComplete.mutate(goal._id)}
-                          disabled={blocked}
-                          title={blocked ? `${pendingCount} task${pendingCount > 1 ? 's' : ''} still pending` : 'Mark as complete'}
-                          className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${
-                            blocked
-                              ? 'text-slate-200 cursor-not-allowed'
-                              : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50 cursor-pointer'
-                          }`}
-                        >
-                          <CheckCircle size={15} />
-                        </button>
-                      )
-                    })()}
+                    {goal.status !== 'completed' && (
+                      <button
+                        onClick={() => !blocked && markComplete.mutate(goal._id)}
+                        disabled={blocked}
+                        title={blocked ? `${pendingSteps} step${pendingSteps > 1 ? 's' : ''} still pending` : 'Mark as complete'}
+                        className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${
+                          blocked
+                            ? 'text-slate-200 cursor-not-allowed'
+                            : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50 cursor-pointer'
+                        }`}
+                      >
+                        <CheckCircle size={15} />
+                      </button>
+                    )}
 
                     {/* Delete */}
-                    {(() => {
-                      const pendingCount = goal.tasks.filter((t) => !t.done).length
-                      const blocked = pendingCount > 0
-                      return (
-                        <button
-                          onClick={() => !blocked && setConfirmDeleteId(goal._id)}
-                          disabled={blocked}
-                          title={blocked ? `${pendingCount} task${pendingCount > 1 ? 's' : ''} still pending` : 'Delete goal'}
-                          className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${
-                            blocked
-                              ? 'text-red-200 cursor-not-allowed'
-                              : 'text-red-400 hover:text-red-600 hover:bg-red-50 cursor-pointer'
-                          }`}
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      )
-                    })()}
-                  </div>
-                </div>
-
-                {/* Delete confirmation */}
-                {confirmDeleteId === goal._id && (
-                  <div className='mt-3 flex items-center justify-between bg-red-50 border border-red-100 rounded-lg px-4 py-2.5'>
-                    <span className='text-sm text-red-700'>Delete this goal?</span>
-                    <div className='flex gap-2'>
+                    <div className='relative'>
                       <button
-                        onClick={() => setConfirmDeleteId(null)}
-                        className='text-xs font-medium text-slate-600 hover:text-slate-800 cursor-pointer px-2 py-1'
+                        onClick={() => !blocked && setConfirmDeleteId(confirmDeleteId === goal._id ? null : goal._id)}
+                        disabled={blocked}
+                        title={blocked ? `${pendingSteps} step${pendingSteps > 1 ? 's' : ''} still pending` : 'Delete goal'}
+                        className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${
+                          blocked
+                            ? 'text-red-200 cursor-not-allowed'
+                            : 'text-red-400 hover:text-red-600 hover:bg-red-50 cursor-pointer'
+                        }`}
                       >
-                        Cancel
+                        <Trash2 size={15} />
                       </button>
-                      <button
-                        onClick={() => deleteGoal.mutate(goal._id)}
-                        className='text-xs font-medium text-white bg-red-500 hover:bg-red-600 cursor-pointer px-3 py-1 rounded-md transition-colors'
-                      >
-                        Delete
-                      </button>
+                      {confirmDeleteId === goal._id && (
+                        <DeletePopover
+                          title="Delete goal"
+                          itemName={goal.title}
+                          onConfirm={() => deleteGoal.mutate(goal._id)}
+                          onCancel={() => setConfirmDeleteId(null)}
+                        />
+                      )}
                     </div>
                   </div>
-                )}
+                </div>
 
                 {/* Progress bar */}
                 <div className='mt-4'>
@@ -377,71 +376,65 @@ function GoalsPage() {
                   </div>
                 </div>
 
-                {/* Tasks */}
-                {goal.tasks.length > 0 ? (
+                {/* Steps */}
+                {goal.steps.length > 0 ? (
                   <div className='mt-4 space-y-2'>
-                    {goal.tasks.map((task) => (
-                      <button
-                        key={task._id}
-                        onClick={() => toggleTask.mutate({ id: task._id, done: !task.done })}
-                        className='flex items-center gap-3 w-full text-left group cursor-pointer'
-                      >
-                        <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
-                          task.done
-                            ? 'bg-teal-600 border-teal-600'
-                            : 'border-slate-300 group-hover:border-teal-400'
-                        }`}>
-                          {task.done && <Check size={10} className='text-white' strokeWidth={3} />}
+                    {goal.steps.map((step) => (
+                      <div key={step._id} className='flex items-center gap-2'>
+                        <button
+                          onClick={() => toggleStep.mutate({ id: step._id, done: !step.done })}
+                          className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors cursor-pointer ${
+                            step.done
+                              ? 'bg-teal-600 border-teal-600'
+                              : 'border-slate-300 hover:border-teal-400'
+                          }`}
+                        >
+                          {step.done && <Check size={10} className='text-white' strokeWidth={3} />}
+                        </button>
+                        <div
+                          onClick={() => toggleStep.mutate({ id: step._id, done: !step.done })}
+                          className='flex-1 cursor-pointer'
+                        >
+                          <p className={`text-sm transition-colors ${step.done ? 'line-through text-slate-400' : 'text-slate-700'}`}>
+                            {step.title}
+                          </p>
+                          {step.description && (
+                            <p className='text-xs text-slate-400 mt-0.5'>{step.description}</p>
+                          )}
                         </div>
-                        <span className={`text-sm transition-colors ${task.done ? 'line-through text-slate-400' : 'text-slate-700'}`}>
-                          {task.title}
-                        </span>
-                      </button>
+                        <div className='relative'>
+                          <button
+                            onClick={() => setConfirmDeleteStepId(confirmDeleteStepId === step._id ? null : step._id)}
+                            className='p-1 text-red-400 hover:text-red-600 transition-colors cursor-pointer'
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                          {confirmDeleteStepId === step._id && (
+                            <DeletePopover
+                              title='Delete step'
+                              itemName={step.title}
+                              onConfirm={() => deleteStep.mutate(step._id)}
+                              onCancel={() => setConfirmDeleteStepId(null)}
+                            />
+                          )}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 ) : (
-                  addingTaskGoalId !== goal._id && (
-                    <p className='mt-4 text-xs text-slate-400'>No tasks yet.</p>
+                  addingStepGoalId !== goal._id && (
+                    <p className='mt-4 text-xs text-slate-400'>No steps yet.</p>
                   )
                 )}
 
-                {/* Add task inline */}
-                {goal.status !== 'completed' && addingTaskGoalId === goal._id ? (
-                  <div className='mt-3 flex gap-2'>
-                    <input
-                      type='text'
-                      value={newTaskTitle}
-                      onChange={(e) => setNewTaskTitle(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') submitNewTask(goal._id)
-                        if (e.key === 'Escape') { setAddingTaskGoalId(null); setNewTaskTitle('') }
-                      }}
-                      placeholder='Task title...'
-                      autoFocus
-                      className='flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent'
-                    />
-                    <button
-                      onClick={() => submitNewTask(goal._id)}
-                      disabled={!newTaskTitle.trim()}
-                      className='px-3 py-2 text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-40 rounded-lg cursor-pointer transition-colors'
-                    >
-                      Add
-                    </button>
-                    <button
-                      onClick={() => { setAddingTaskGoalId(null); setNewTaskTitle('') }}
-                      className='px-3 py-2 text-sm text-slate-500 hover:text-slate-700 cursor-pointer'
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                ) : goal.status !== 'completed' ? (
+                {goal.status !== 'completed' && (
                   <button
-                    onClick={() => { setAddingTaskGoalId(goal._id); setNewTaskTitle('') }}
+                    onClick={() => openAddStep(goal._id)}
                     className='mt-3 text-xs text-teal-600 hover:text-teal-700 font-medium cursor-pointer'
                   >
-                    + Add task
+                    + Add step
                   </button>
-                ) : null}
+                )}
 
               </div>
             )
@@ -458,7 +451,6 @@ function GoalsPage() {
           <div className='bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto'>
             <div className='p-6'>
               <h2 className='text-lg font-semibold text-slate-900 mb-5'>New Goal</h2>
-
               <form onSubmit={handleSubmit} className='space-y-4'>
                 <div>
                   <label className='block text-xs font-medium text-slate-600 mb-1.5'>Title</label>
@@ -467,12 +459,11 @@ function GoalsPage() {
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder='e.g. Learn backend development'
-                    className='w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent'
+                    className='w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500'
                     required
                     autoFocus
                   />
                 </div>
-
                 <div>
                   <label className='block text-xs font-medium text-slate-600 mb-1.5'>
                     Description <span className='text-slate-400 font-normal'>(optional)</span>
@@ -482,60 +473,65 @@ function GoalsPage() {
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder='What does achieving this goal mean to you?'
                     rows={2}
-                    className='w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none'
+                    className='w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none'
                   />
                 </div>
-
                 <div>
                   <label className='block text-xs font-medium text-slate-600 mb-1.5'>Deadline</label>
                   <input
                     type='date'
                     value={deadline}
                     onChange={(e) => setDeadline(e.target.value)}
-                    className='w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent'
+                    className='w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500'
                     required
                   />
                 </div>
-
                 <div>
                   <label className='block text-xs font-medium text-slate-600 mb-1.5'>
-                    Tasks <span className='text-slate-400 font-normal'>(optional)</span>
+                    Steps <span className='text-slate-400 font-normal'>(optional)</span>
                   </label>
-                  <div className='flex gap-2'>
+                  <div className='space-y-2'>
+                    <div className='flex gap-2'>
+                      <input
+                        type='text'
+                        value={stepDraft}
+                        onChange={(e) => setStepDraft(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addStepToList() } }}
+                        placeholder='Step title'
+                        className='flex-1 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500'
+                      />
+                      <button
+                        type='button'
+                        onClick={addStepToList}
+                        className='px-3 py-2.5 text-sm font-medium text-teal-600 border border-teal-200 rounded-lg hover:bg-teal-50 cursor-pointer transition-colors'
+                      >
+                        Add
+                      </button>
+                    </div>
                     <input
                       type='text'
-                      value={taskDraft}
-                      onChange={(e) => setTaskDraft(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault()
-                          addTaskToList()
-                        }
-                      }}
-                      placeholder='Add a task and press Enter'
-                      className='flex-1 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent'
+                      value={stepDraftDescription}
+                      onChange={(e) => setStepDraftDescription(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addStepToList() } }}
+                      placeholder='Description (optional)'
+                      className='w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500'
                     />
-                    <button
-                      type='button'
-                      onClick={addTaskToList}
-                      className='px-3 py-2.5 text-sm font-medium text-teal-600 border border-teal-200 rounded-lg hover:bg-teal-50 cursor-pointer transition-colors'
-                    >
-                      Add
-                    </button>
                   </div>
-
-                  {taskInputs.length > 0 && (
+                  {stepInputs.length > 0 && (
                     <ul className='mt-2 space-y-1'>
-                      {taskInputs.map((t, i) => (
+                      {stepInputs.map((s, i) => (
                         <li key={i} className='flex items-center justify-between gap-2 bg-slate-50 rounded-lg px-3 py-2'>
-                          <span className='flex items-center gap-2 text-sm text-slate-700'>
-                            <span className='w-1.5 h-1.5 rounded-full bg-teal-500 flex-shrink-0' />
-                            {t}
-                          </span>
+                          <div className='flex items-start gap-2 min-w-0'>
+                            <span className='w-1.5 h-1.5 rounded-full bg-teal-500 flex-shrink-0 mt-1.5' />
+                            <div>
+                              <p className='text-sm text-slate-700'>{s.title}</p>
+                              {s.description && <p className='text-xs text-slate-400 mt-0.5'>{s.description}</p>}
+                            </div>
+                          </div>
                           <button
                             type='button'
-                            onClick={() => removeTask(i)}
-                            className='text-slate-400 hover:text-red-400 cursor-pointer transition-colors text-xl leading-none'
+                            onClick={() => removeStepFromList(i)}
+                            className='text-slate-400 hover:text-red-400 cursor-pointer transition-colors text-xl leading-none flex-shrink-0'
                           >
                             ×
                           </button>
@@ -544,7 +540,6 @@ function GoalsPage() {
                     </ul>
                   )}
                 </div>
-
                 <div className='flex gap-3 pt-2'>
                   <button
                     type='button'
@@ -567,6 +562,69 @@ function GoalsPage() {
         </div>
       )}
 
+      {/* Add Step Modal */}
+      {addingStepGoalId && (
+        <div
+          className='fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4'
+          onClick={(e) => e.target === e.currentTarget && closeAddStep()}
+        >
+          <div className='bg-white rounded-2xl shadow-xl w-full max-w-sm'>
+            <div className='p-6'>
+              <h2 className='text-lg font-semibold text-slate-900 mb-5'>Add Step</h2>
+              <div className='space-y-4'>
+                <div>
+                  <label className='block text-xs font-medium text-slate-600 mb-1.5'>Title</label>
+                  <input
+                    type='text'
+                    value={newStepTitle}
+                    onChange={(e) => setNewStepTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') submitNewStep(addingStepGoalId)
+                      if (e.key === 'Escape') closeAddStep()
+                    }}
+                    placeholder='e.g. Set up project structure'
+                    className='w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500'
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className='block text-xs font-medium text-slate-600 mb-1.5'>
+                    Description <span className='text-slate-400 font-normal'>(optional)</span>
+                  </label>
+                  <textarea
+                    value={newStepDescription}
+                    onChange={(e) => setNewStepDescription(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') closeAddStep()
+                    }}
+                    placeholder='What does this step involve?'
+                    rows={2}
+                    className='w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none'
+                  />
+                </div>
+                <div className='flex gap-3 pt-2'>
+                  <button
+                    type='button'
+                    onClick={closeAddStep}
+                    className='flex-1 border border-slate-200 text-slate-600 text-sm font-medium py-2.5 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors'
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type='button'
+                    onClick={() => submitNewStep(addingStepGoalId)}
+                    disabled={!newStepTitle.trim() || addStep.isPending}
+                    className='flex-1 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white text-sm font-medium py-2.5 rounded-lg cursor-pointer transition-colors'
+                  >
+                    {addStep.isPending ? 'Adding...' : 'Add Step'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Edit Goal Modal */}
       {editingGoal && (
         <div
@@ -576,7 +634,6 @@ function GoalsPage() {
           <div className='bg-white rounded-2xl shadow-xl w-full max-w-md'>
             <div className='p-6'>
               <h2 className='text-lg font-semibold text-slate-900 mb-5'>Edit Goal</h2>
-
               <form onSubmit={handleEditSubmit} className='space-y-4'>
                 <div>
                   <label className='block text-xs font-medium text-slate-600 mb-1.5'>Title</label>
@@ -584,12 +641,11 @@ function GoalsPage() {
                     type='text'
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
-                    className='w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent'
+                    className='w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500'
                     required
                     autoFocus
                   />
                 </div>
-
                 <div>
                   <label className='block text-xs font-medium text-slate-600 mb-1.5'>
                     Description <span className='text-slate-400 font-normal'>(optional)</span>
@@ -598,21 +654,19 @@ function GoalsPage() {
                     value={editDescription}
                     onChange={(e) => setEditDescription(e.target.value)}
                     rows={2}
-                    className='w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none'
+                    className='w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none'
                   />
                 </div>
-
                 <div>
                   <label className='block text-xs font-medium text-slate-600 mb-1.5'>Deadline</label>
                   <input
                     type='date'
                     value={editDeadline}
                     onChange={(e) => setEditDeadline(e.target.value)}
-                    className='w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent'
+                    className='w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500'
                     required
                   />
                 </div>
-
                 <div className='flex gap-3 pt-2'>
                   <button
                     type='button'

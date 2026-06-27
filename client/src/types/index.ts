@@ -14,9 +14,19 @@ export interface AuthResponse {
 export interface Task {
   _id: string
   userId: string
-  goalId?: string
   title: string
   dueDate?: string
+  done: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Step {
+  _id: string
+  goalId: string
+  userId: string
+  title: string
+  description?: string
   done: boolean
   createdAt: string
   updatedAt: string
@@ -29,7 +39,7 @@ export interface Goal {
   description?: string
   deadline: string
   status: 'active' | 'completed' | 'overdue'
-  tasks: Task[]
+  steps: Step[]
   progress: number
   createdAt: string
   updatedAt: string
@@ -51,4 +61,15 @@ export interface Habit {
   streak: number
   createdAt: string
   updatedAt: string
+}
+
+export interface HabitWeekData {
+  label: string
+  rate: number
+}
+
+export interface HabitConsistency {
+  habitId: string
+  name: string
+  weeks: HabitWeekData[]
 }

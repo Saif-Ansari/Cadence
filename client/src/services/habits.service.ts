@@ -1,8 +1,9 @@
 import { api } from '../lib/api'
-import type { Habit } from '../types'
+import type { Habit, HabitConsistency } from '../types'
 
 export const habitsService = {
   getHabits: () => api.get<{ habits: Habit[] }>('/habits'),
+  getConsistency: () => api.get<{ consistency: HabitConsistency[] }>('/habits/consistency'),
   createHabit: (data: { name: string; targetFrequency: number; description?: string }) =>
     api.post<{ habit: Habit }>('/habits', data),
   updateHabit: (id: string, data: Partial<Pick<Habit, 'name' | 'targetFrequency' | 'description' | 'status'>>) =>

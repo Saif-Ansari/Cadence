@@ -6,6 +6,7 @@ const protect = require('../middleware/auth')
 router.use(protect)
 
 router.get('/', habitsController.getHabits)
+router.get('/consistency', habitsController.getConsistency)
 router.post('/', habitsController.createHabit)
 router.patch('/:id', habitsController.updateHabit)
 router.delete('/:id', habitsController.deleteHabit)

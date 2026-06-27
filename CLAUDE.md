@@ -36,21 +36,36 @@ Phase 2 screen designed: Metrics.
 - Sidebar/panel bg: `#F8FAFC` | Border: `#E2E8F0` | Heading: `#0F172A` | Font: Inter
 - Motivational quote: appears on the Dashboard and on the left panel of auth screens (Login, Sign up). Serves as a daily anchor — brief, powerful, contextually relevant. Designed as a deliberate feature, not decoration.
 
-## Data models (planned)
-- User, Goal, Habit, HabitLog, Task, CheckIn, Reflection
+## Data models
+- **User** — auth + profile
+- **Goal** — title, description, deadline, status
+- **Step** — belongs to a Goal (`goalId`); title, description, done (binary checkbox). Goal progress = done/total steps.
+- **Habit** — name, targetFrequency, description, status; tracked via HabitLog
+- **HabitLog** — one doc per habit per day; toggle creates/deletes
+- **Task** — standalone daily todo (title, dueDate, done); no goal link. Lazy-deleted on next day's fetch.
+- CheckIn, Reflection — planned
+
+### Architecture decision: Goal → Steps, Tasks separate
+Goals break down into **Steps** (binary progress checklists). Tasks are **standalone today-only todos** — no goal link. Steps are a separate model (`server/models/Step.js`). Phase 2 will add tasks linkable to steps (three-level hierarchy).
 
 ## API conventions
 - Base URL: `/api`
-- Existing: `/api/health`, `/api/habits`
-- All routes to be added under `/api/<resource>`
+- Routes: `/api/health`, `/api/auth`, `/api/goals`, `/api/steps`, `/api/habits`, `/api/tasks`
 - Error shape: `{ error: { code, message } }`
+- Steps: `POST /api/steps`, `PATCH /api/steps/:id`, `DELETE /api/steps/:id`
+- Habits consistency: `GET /api/habits/consistency` — 5-week rolling heatmap data
+
+## UI conventions
+- Delete confirmation: always use `<DeletePopover>` (`client/src/components/ui/DeletePopover.tsx`) — never inline confirm. Click-outside closes it.
+- Delete buttons: always visible (not hover-only), default `text-red-400 hover:text-red-600`
+- Add step / add habit: modal, not inline form
 
 ## Build order (vertical slices)
-1. Auth (JWT + Google OAuth) + User model
-2. Goals — CRUD + task-based progress
-3. Habits — CRUD + daily check-off + streak
-4. Tasks — CRUD + optional goal link
-5. Dashboard — streak, goals, tasks, habits
+1. ✅ Auth (JWT) + User model
+2. ✅ Goals — CRUD + Step-based progress
+3. ✅ Habits — CRUD + daily check-off + streak + consistency heatmap
+4. ✅ Tasks — standalone daily todos, inline create/delete on Dashboard, lazy DB cleanup
+5. ✅ Dashboard — streak, goals summary, today's tasks, habits summary
 6. Reflections — form + history list
 7. Settings — theme + account
 8. Polish + deploy
