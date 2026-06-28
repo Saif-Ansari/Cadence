@@ -48,4 +48,20 @@ async function me(req, res) {
   }
 }
 
-module.exports = { signup, login, logout, me }
+async function changePassword(req, res) {
+  const { currentPassword, newPassword } = req.body
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: { message: 'currentPassword and newPassword are required' } })
+  }
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: { message: 'New password must be at least 8 characters' } })
+  }
+  try {
+    await authService.changePassword(req.user._id, currentPassword, newPassword)
+    res.json({ message: 'Password updated' })
+  } catch (err) {
+    res.status(err.status || 500).json({ error: { code: err.code, message: err.message } })
+  }
+}
+
+module.exports = { signup, login, logout, me, changePassword }

@@ -91,4 +91,24 @@ async function getStreak(userId) {
   return streak
 }
 
-module.exports = { signup, login, recordCheckIn, getStreak }
+async function changePassword(userId, currentPassword, newPassword) {
+  const user = await User.findById(userId)
+  if (!user) {
+    const err = new Error('User not found')
+    err.status = 404
+    throw err
+  }
+
+  const match = await bcrypt.compare(currentPassword, user.passwordHash)
+  if (!match) {
+    const err = new Error('Current password is incorrect')
+    err.code = 'WRONG_PASSWORD'
+    err.status = 400
+    throw err
+  }
+
+  user.passwordHash = await bcrypt.hash(newPassword, 10)
+  await user.save()
+}
+
+module.exports = { signup, login, recordCheckIn, getStreak, changePassword }
