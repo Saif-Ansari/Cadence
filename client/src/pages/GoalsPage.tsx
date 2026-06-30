@@ -6,38 +6,9 @@ import UserMenu from '../components/layout/UserMenu'
 import { goalsService } from '../services/goals.service'
 import { stepsService } from '../services/steps.service'
 import type { Goal } from '../types'
+import { computeGoalStatus, STATUS_STYLES, STATUS_LABELS, PROGRESS_COLOR } from '../lib/goalStatus'
 
 type TabFilter = 'all' | 'on-track' | 'at-risk' | 'completed'
-
-const STATUS_STYLES: Record<string, string> = {
-  'on-track': 'bg-teal-50 text-teal-700',
-  'at-risk': 'bg-amber-50 text-amber-700',
-  'overdue': 'bg-red-50 text-red-600',
-  'completed': 'bg-slate-100 text-slate-500',
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  'on-track': 'ON TRACK',
-  'at-risk': 'AT RISK',
-  'overdue': 'OVERDUE',
-  'completed': 'COMPLETED',
-}
-
-const PROGRESS_COLOR: Record<string, string> = {
-  'on-track': 'bg-teal-600',
-  'at-risk': 'bg-amber-400',
-  'overdue': 'bg-red-400',
-  'completed': 'bg-slate-300',
-}
-
-function computeGoalStatus(goal: Goal): 'on-track' | 'at-risk' | 'overdue' | 'completed' {
-  if (goal.status === 'completed') return 'completed'
-  const daysLeft = Math.ceil((new Date(goal.deadline).getTime() - Date.now()) / 86400000)
-  if (daysLeft < 0) return 'overdue'
-  if (daysLeft <= 7 && goal.progress < 80) return 'at-risk'
-  if (daysLeft <= 14 && goal.progress < 50) return 'at-risk'
-  return 'on-track'
-}
 
 function formatDeadline(iso: string) {
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -224,20 +195,22 @@ function GoalsPage() {
         description: description.trim() || undefined,
         deadline,
       })
+      // Steps are best-effort — goal is already saved, so always close and refresh
       if (stepInputs.length > 0) {
-        await Promise.all(
+        await Promise.allSettled(
           stepInputs.map((s) => stepsService.createStep({ title: s.title, description: s.description || undefined, goalId: goal._id }))
         )
       }
       queryClient.invalidateQueries({ queryKey: ['goals'] })
       resetModal()
     } catch {
+      // createGoal itself failed — goal not created, just re-enable submit
       setSubmitting(false)
     }
   }
 
   return (
-    <div className='p-8'>
+    <div className='p-4 lg:p-8'>
 
       {/* Header */}
       <div className='flex items-center justify-between mb-6'>
@@ -288,7 +261,7 @@ function GoalsPage() {
           {filtered.map((goal) => {
             const status = computeGoalStatus(goal)
             const pendingSteps = goal.steps.filter((s) => !s.done).length
-            const blocked = pendingSteps > 0
+            const allStepsDone = pendingSteps === 0
 
             return (
               <div key={goal._id} className='border border-slate-200 rounded-xl p-5'>
@@ -320,14 +293,14 @@ function GoalsPage() {
                       <Pencil size={15} />
                     </button>
 
-                    {/* Mark complete */}
+                    {/* Mark complete — only when all steps are done */}
                     {goal.status !== 'completed' && (
                       <button
-                        onClick={() => !blocked && markComplete.mutate(goal._id)}
-                        disabled={blocked}
-                        title={blocked ? `${pendingSteps} step${pendingSteps > 1 ? 's' : ''} still pending` : 'Mark as complete'}
+                        onClick={() => allStepsDone && markComplete.mutate(goal._id)}
+                        disabled={!allStepsDone}
+                        title={!allStepsDone ? `${pendingSteps} step${pendingSteps > 1 ? 's' : ''} still pending` : 'Mark as complete'}
                         className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${
-                          blocked
+                          !allStepsDone
                             ? 'text-slate-200 cursor-not-allowed'
                             : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50 cursor-pointer'
                         }`}
@@ -336,17 +309,12 @@ function GoalsPage() {
                       </button>
                     )}
 
-                    {/* Delete */}
+                    {/* Delete — always allowed; backend cascade-deletes steps */}
                     <div className='relative'>
                       <button
-                        onClick={() => !blocked && setConfirmDeleteId(confirmDeleteId === goal._id ? null : goal._id)}
-                        disabled={blocked}
-                        title={blocked ? `${pendingSteps} step${pendingSteps > 1 ? 's' : ''} still pending` : 'Delete goal'}
-                        className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${
-                          blocked
-                            ? 'text-red-200 cursor-not-allowed'
-                            : 'text-red-400 hover:text-red-600 hover:bg-red-50 cursor-pointer'
-                        }`}
+                        onClick={() => setConfirmDeleteId(confirmDeleteId === goal._id ? null : goal._id)}
+                        title='Delete goal'
+                        className='w-8 h-8 flex items-center justify-center rounded-md transition-colors text-red-400 hover:text-red-600 hover:bg-red-50 cursor-pointer'
                       >
                         <Trash2 size={15} />
                       </button>

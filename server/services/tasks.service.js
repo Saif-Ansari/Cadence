@@ -11,11 +11,14 @@ async function getTasks(userId, filters = {}) {
     const end = new Date()
     end.setHours(23, 59, 59, 999)
 
-    // Delete standalone tasks with no due date created before today
+    // Delete tasks that belong to a past day — both undated (created before today)
+    // and explicitly dated tasks whose dueDate has passed
     await Task.deleteMany({
       userId,
-      dueDate: { $exists: false },
-      createdAt: { $lt: startOfToday },
+      $or: [
+        { dueDate: { $exists: false }, createdAt: { $lt: startOfToday } },
+        { dueDate: { $exists: true, $lt: startOfToday } },
+      ],
     })
 
     query.$or = [

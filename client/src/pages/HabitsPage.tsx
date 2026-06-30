@@ -7,8 +7,6 @@ import { habitsService } from '../services/habits.service'
 import type { Habit } from '../types'
 
 const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
-// Monday = 0, Sunday = 6
-const todayIndex = (new Date().getDay() + 6) % 7
 
 function cellColor(rate: number) {
   if (rate === 0) return 'bg-slate-100'
@@ -19,6 +17,8 @@ function cellColor(rate: number) {
 
 function HabitsPage() {
   const queryClient = useQueryClient()
+  // Computed inside the component so it reflects the correct day after midnight
+  const todayIndex = (new Date().getDay() + 6) % 7
 
   const [showModal, setShowModal] = useState(false)
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null)
@@ -139,7 +139,7 @@ function HabitsPage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 lg:p-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -162,9 +162,9 @@ function HabitsPage() {
       <div className="border-b border-slate-100 mb-8" />
 
       {/* Main layout */}
-      <div className="flex gap-6">
+      <div className="flex flex-col xl:flex-row gap-6">
         {/* Left: habit list */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 overflow-x-auto">
           {habits.length === 0 ? (
             <div className="border border-dashed border-slate-200 rounded-xl p-12 text-center">
               <p className="text-sm text-slate-400 mb-2">No habits yet.</p>
@@ -277,7 +277,7 @@ function HabitsPage() {
         </div>
 
         {/* Right: stats panel */}
-        <div className="w-[440px] flex-shrink-0 space-y-4">
+        <div className="w-full xl:w-[440px] xl:flex-shrink-0 space-y-4">
           {/* This week */}
           <div className="border border-slate-200 rounded-xl p-5">
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-3">

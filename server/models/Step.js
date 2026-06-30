@@ -11,4 +11,7 @@ const stepSchema = new mongoose.Schema(
   { timestamps: true }
 )
 
+stepSchema.index({ userId: 1 })
+stepSchema.index({ goalId: 1 })
+
 module.exports = mongoose.model('Step', stepSchema)

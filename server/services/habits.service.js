@@ -50,8 +50,10 @@ function calculateStreak(logs, targetFrequency) {
 async function getHabits(userId) {
   const habits = await Habit.find({ userId, status: 'active' }).sort({ createdAt: -1 })
 
-  // Fetch all logs for this user in one query, then filter per habit in memory
-  const allLogs = await HabitLog.find({ userId })
+  // Bound to 1 year — enough for any realistic streak, avoids unbounded scans
+  const oneYearAgo = new Date()
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
+  const allLogs = await HabitLog.find({ userId, date: { $gte: oneYearAgo } })
 
   // Get current week's Monday and Sunday for the weekly grid
   const today = normalizeDate(new Date())

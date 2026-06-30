@@ -11,4 +11,6 @@ const habitSchema = new mongoose.Schema(
   { timestamps: true }
 )
 
+habitSchema.index({ userId: 1 })
+
 module.exports = mongoose.model('Habit', habitSchema)

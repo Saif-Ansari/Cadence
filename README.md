@@ -29,6 +29,8 @@ Existing apps solve one of these in isolation. Cadence ties all three together �
 | Dashboard — streak, goals summary, today's tasks, habits | ✅ Done |
 | Reflections — form, history panel, modals | ✅ Done |
 | Settings — change password + theme preference | ✅ Done |
+| Mobile & tablet responsive | ✅ Done |
+| Tests — backend integration + frontend unit | ✅ Done |
 | Deploy | ⏳ Next |
 
 ---
@@ -45,6 +47,7 @@ Existing apps solve one of these in isolation. Cadence ties all three together �
 - **Settings** — change password; light/dark theme preference (dark styles Phase 2)
 - **Auto check-in** — logging in marks the day and increments your streak; no manual button needed
 - **Motivational quotes** — a brief, powerful quote on the dashboard and auth screens
+- **Mobile & tablet** — sidebar slides in as an overlay on small screens; all layouts stack responsively
 
 ### Phase 2 (planned)
 
@@ -76,6 +79,10 @@ Existing apps solve one of these in isolation. Cadence ties all three together �
 - `concurrently` — run client + server together from root
 - REST API with consistent error shape: `{ error: { code, message } }`
 
+**Testing**
+- Backend: Jest + Supertest + `mongodb-memory-server` (in-memory MongoDB, no real DB needed)
+- Frontend: Vitest (pure unit tests for shared utilities)
+
 ---
 
 ## Project Structure
@@ -91,10 +98,17 @@ cadence/
 │       │                    # HabitsPage, ReflectionsPage, SettingsPage
 │       ├── services/        # API call functions per resource
 │       ├── store/           # Zustand auth store
-│       ├── lib/api.ts       # Base fetch wrapper (attaches JWT)
+│       ├── lib/
+│       │   ├── api.ts       # Base fetch wrapper (attaches JWT)
+│       │   └── goalStatus.ts# Shared goal status utilities + styles
 │       ├── types/           # Shared TypeScript interfaces
 │       └── constants/       # Quotes array
 ├── server/                  # Express + Mongoose (port 5000)
+│   ├── __tests__/           # Jest integration tests
+│   │   ├── setup.js         # mongodb-memory-server lifecycle
+│   │   ├── auth.test.js
+│   │   ├── goals.test.js
+│   │   └── reflections.test.js
 │   ├── controllers/         # req/res handling
 │   ├── services/            # Pure business logic
 │   ├── models/              # Mongoose schemas
@@ -128,6 +142,16 @@ npm run dev
 
 Client runs at `http://localhost:5173`
 Server runs at `http://localhost:5000`
+
+### Running tests
+
+```bash
+# Backend integration tests (auth, goals, reflections)
+cd server && npm test
+
+# Frontend unit tests (goalStatus utilities)
+cd client && npm test
+```
 
 ---
 

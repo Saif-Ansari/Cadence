@@ -27,9 +27,13 @@ async function createGoal(userId, { title, description, deadline }) {
 }
 
 async function updateGoal(userId, goalId, updates) {
+  const allowed = ['title', 'description', 'deadline', 'status']
+  const filtered = Object.fromEntries(
+    Object.entries(updates).filter(([k]) => allowed.includes(k))
+  )
   const goal = await Goal.findOneAndUpdate(
     { _id: goalId, userId },
-    updates,
+    { $set: filtered },
     { new: true, runValidators: true }
   )
   if (!goal) {
@@ -47,7 +51,7 @@ async function deleteGoal(userId, goalId) {
     err.status = 404
     throw err
   }
-  await Step.deleteMany({ goalId })
+  await Step.deleteMany({ goalId, userId })
 }
 
 module.exports = { getGoals, createGoal, updateGoal, deleteGoal }

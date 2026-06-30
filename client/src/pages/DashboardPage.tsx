@@ -9,6 +9,7 @@ import { goalsService } from "../services/goals.service";
 import { habitsService } from "../services/habits.service";
 import { tasksService } from "../services/tasks.service";
 import type { Goal, Task } from "../types";
+import { computeGoalStatus, STATUS_STYLES, STATUS_LABELS, PROGRESS_COLOR } from "../lib/goalStatus";
 
 const DAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
 
@@ -36,39 +37,6 @@ function formatFullDate() {
   });
 }
 
-function computeGoalStatus(
-  goal: Goal,
-): "on-track" | "at-risk" | "overdue" | "completed" {
-  if (goal.status === "completed") return "completed";
-  const daysLeft = Math.ceil(
-    (new Date(goal.deadline).getTime() - Date.now()) / 86400000,
-  );
-  if (daysLeft < 0) return "overdue";
-  if (daysLeft <= 7 && goal.progress < 80) return "at-risk";
-  if (daysLeft <= 14 && goal.progress < 50) return "at-risk";
-  return "on-track";
-}
-
-const STATUS_STYLES: Record<string, string> = {
-  "on-track": "bg-teal-50 text-teal-700",
-  "at-risk": "bg-amber-50 text-amber-700",
-  overdue: "bg-red-50 text-red-600",
-  completed: "bg-slate-100 text-slate-500",
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  "on-track": "ON TRACK",
-  "at-risk": "AT RISK",
-  overdue: "OVERDUE",
-  completed: "COMPLETED",
-};
-
-const PROGRESS_COLOR: Record<string, string> = {
-  "on-track": "bg-teal-600",
-  "at-risk": "bg-amber-400",
-  overdue: "bg-red-400",
-  completed: "bg-slate-300",
-};
 
 function DashboardPage() {
   const user = useAuthStore((s) => s.user);
@@ -131,7 +99,7 @@ function DashboardPage() {
   today.setHours(0, 0, 0, 0);
 
   return (
-    <div className="p-8">
+    <div className="p-4 lg:p-8">
       {/* Greeting header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -149,9 +117,9 @@ function DashboardPage() {
       <div className="border-b border-slate-100 mb-8" />
 
       {/* Two column layout */}
-      <div className="grid grid-cols-5 gap-6 min-h-[calc(100vh-220px)]">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Left column */}
-        <div className="col-span-3 space-y-6">
+        <div className="lg:col-span-3 space-y-6">
           {/* Goals */}
           <div>
             <div className="flex items-center justify-between mb-3">
@@ -219,7 +187,7 @@ function DashboardPage() {
         </div>
 
         {/* Right column */}
-        <div className="col-span-2 flex flex-col">
+        <div className="lg:col-span-2 flex flex-col">
           {/* Today + Habits — grows to fill space */}
           <div className="flex-1 space-y-6">
             {/* Today's tasks */}

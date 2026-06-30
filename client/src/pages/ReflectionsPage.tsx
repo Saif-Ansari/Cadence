@@ -100,7 +100,7 @@ function ReflectionsPage() {
     <div className='flex flex-col h-full'>
 
       {/* Full-width header */}
-      <div className='px-8 pt-8 pb-0 flex-shrink-0'>
+      <div className='px-4 pt-4 lg:px-8 lg:pt-8 pb-0 flex-shrink-0'>
         <div className='flex items-center justify-between mb-6'>
           <div>
             <h1 className='text-2xl font-semibold text-slate-900'>Reflections</h1>
@@ -115,7 +115,7 @@ function ReflectionsPage() {
       <div className='flex flex-1 overflow-hidden'>
 
       {/* Main form */}
-      <div className='flex-1 overflow-y-auto p-8 pt-6'>
+      <div className='flex-1 overflow-y-auto p-4 pt-4 lg:p-8 lg:pt-6'>
 
         {/* Form fields */}
         <div className='max-w-2xl space-y-6'>
@@ -178,7 +178,7 @@ function ReflectionsPage() {
           {/* Focus score */}
           <div>
             <label className='block text-sm font-semibold text-slate-800 mb-3'>How focused were you today?</label>
-            <div className='flex gap-2'>
+            <div className='flex flex-wrap gap-2'>
               {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
                 <button
                   key={n}
@@ -201,7 +201,7 @@ function ReflectionsPage() {
           </div>
 
           {/* Save button */}
-          <div className='pt-2'>
+          <div className='pt-2 flex items-center gap-4 flex-wrap'>
             <button
               onClick={() => upsert.mutate()}
               disabled={!hasContent || upsert.isPending}
@@ -209,13 +209,23 @@ function ReflectionsPage() {
             >
               {upsert.isPending ? 'Saving...' : saved ? 'Saved!' : 'Save Reflection'}
             </button>
+            {/* Mobile: show history link */}
+            {reflections.length > 0 && (
+              <button
+                onClick={() => setShowHistory(true)}
+                className='lg:hidden flex items-center gap-1 text-sm font-medium text-teal-600 hover:text-teal-700 cursor-pointer transition-colors'
+              >
+                View history
+                <ChevronRight size={14} />
+              </button>
+            )}
           </div>
 
         </div>
       </div>
 
-      {/* Right panel — recent history */}
-      <div className='w-[300px] flex-shrink-0 border-l border-slate-100 flex flex-col'>
+      {/* Right panel — recent history (hidden on mobile) */}
+      <div className='hidden lg:flex w-[300px] flex-shrink-0 border-l border-slate-100 flex-col'>
         <div className='p-6 flex-1 overflow-y-auto'>
           <p className='text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-4'>Recent Reflections</p>
 

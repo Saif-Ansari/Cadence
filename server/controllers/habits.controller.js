@@ -25,6 +25,10 @@ async function createHabit(req, res) {
 
 async function updateHabit(req, res) {
   try {
+    const { targetFrequency } = req.body
+    if (targetFrequency !== undefined && (targetFrequency < 1 || targetFrequency > 7)) {
+      return res.status(400).json({ error: { message: 'targetFrequency must be between 1 and 7' } })
+    }
     const habit = await habitsService.updateHabit(req.user._id, req.params.id, req.body)
     if (!habit) return res.status(404).json({ error: { message: 'Habit not found' } })
     res.json({ habit })

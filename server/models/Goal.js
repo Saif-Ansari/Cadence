@@ -29,4 +29,6 @@ const goalSchema = new mongoose.Schema(
   { timestamps: true }
 )
 
+goalSchema.index({ userId: 1 })
+
 module.exports = mongoose.model('Goal', goalSchema)
