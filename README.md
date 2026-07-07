@@ -31,6 +31,7 @@ Existing apps solve one of these in isolation. Cadence ties all three together �
 | Settings — change password + theme preference | ✅ Done |
 | Mobile & tablet responsive | ✅ Done |
 | Tests — backend integration + frontend unit | ✅ Done |
+| Pre-deploy hardening — security, error handling, timezone-safe dates, dark mode | ✅ Done |
 | Deploy | ⏳ Next |
 
 ---
@@ -44,7 +45,7 @@ Existing apps solve one of these in isolation. Cadence ties all three together �
 - **Habits** — create habits with a weekly frequency target; mark each day done/not done; weekly streak; 5-week consistency heatmap
 - **Tasks** — standalone daily todos; created inline on the Dashboard; automatically cleaned from the DB the next day
 - **Reflections** — end-of-day form: overall day, accomplishments, win of the day, time wasters, improvements, focus score (1–10); recent history panel; full history modal; read-only entry detail view
-- **Settings** — change password; light/dark theme preference (dark styles Phase 2)
+- **Settings** — change password; light/dark theme toggle (persisted, applied via Tailwind `dark:` variants)
 - **Auto check-in** — logging in marks the day and increments your streak; no manual button needed
 - **Motivational quotes** — a brief, powerful quote on the dashboard and auth screens
 - **Mobile & tablet** — sidebar slides in as an overlay on small screens; all layouts stack responsively
@@ -54,7 +55,6 @@ Existing apps solve one of these in isolation. Cadence ties all three together �
 - Metrics screen — habit completion charts, goal progress, streak history, focus score trend
 - Tasks linked to Steps (three-level hierarchy: Goal → Step → Tasks)
 - Habit scheduling — specific days per habit
-- Dark mode styles
 - Forgot password flow (requires email service)
 - Deploy — Vercel (frontend) + Railway (backend) + MongoDB Atlas
 

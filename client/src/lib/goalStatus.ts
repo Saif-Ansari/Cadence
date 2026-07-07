@@ -3,10 +3,10 @@ import type { Goal } from '../types'
 export type GoalStatus = 'on-track' | 'at-risk' | 'overdue' | 'completed'
 
 export const STATUS_STYLES: Record<string, string> = {
-  'on-track': 'bg-teal-50 text-teal-700',
-  'at-risk': 'bg-amber-50 text-amber-700',
-  'overdue': 'bg-red-50 text-red-600',
-  'completed': 'bg-slate-100 text-slate-500',
+  'on-track': 'bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-400',
+  'at-risk': 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-400',
+  'overdue': 'bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400',
+  'completed': 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
 }
 
 export const STATUS_LABELS: Record<string, string> = {
@@ -20,7 +20,7 @@ export const PROGRESS_COLOR: Record<string, string> = {
   'on-track': 'bg-teal-600',
   'at-risk': 'bg-amber-400',
   'overdue': 'bg-red-400',
-  'completed': 'bg-slate-300',
+  'completed': 'bg-slate-300 dark:bg-slate-600',
 }
 
 export function computeGoalStatus(goal: Goal): GoalStatus {

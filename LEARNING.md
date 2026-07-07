@@ -772,19 +772,155 @@ server/
 
 ---
 
-## 11. What's Next
+## 12. Centralized Error Handling — asyncHandler + errorHandler
+
+Before this, every controller function had its own `try { ... } catch (err) { res.status(...).json(...) }` —
+the same six lines copy-pasted into ~20 functions across 6 files. Worse: a Mongoose `CastError`
+(e.g. `GET /api/reflections/not-an-id`) fell into the generic `catch` and got reported as a raw
+500 with the internal Mongoose message leaked straight to the client.
+
+Express has a built-in way to avoid this: a middleware with **four** parameters —
+`(err, req, res, next)` instead of the usual three — is treated specially. If any route handler
+calls `next(err)`, Express skips every remaining route/middleware and jumps straight to the
+first one shaped like that. One place decides what the client sees, for every route.
+
+The catch: this automatic jump only happens for **synchronous** throws. An `async` controller
+that throws is really returning a *rejected promise* — Express doesn't await it, so nothing
+calls `next(err)` for you. `asyncHandler` is the one-line fix:
+
+```js
+// server/utils/asyncHandler.js
+function asyncHandler(fn) {
+  return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next)
+}
+```
+
+Wrap a controller in it once, and its body never needs a try/catch again — any thrown error or
+rejected promise inside is caught and forwarded to `next`, landing in `errorHandler`
+(`server/middleware/errorHandler.js`), which classifies it:
 
 ```
-Backend remaining:
-  └── Dashboard API — streak, goals, tasks, habits in one endpoint
+CastError (bad ObjectId)         → 400 INVALID_ID
+Duplicate key (E11000)           → 409 DUPLICATE
+ValidationError (schema failed)  → 400 VALIDATION_ERROR
+err.status/err.code already set  → use them as-is (services throw these deliberately)
+anything else                    → 500, log server-side, "Internal server error" to the client
+```
 
-Frontend (all pages):
-  ├── Goals screen
-  ├── Habits screen
-  ├── Tasks screen
-  ├── Dashboard full UI
-  ├── Reflections
-  └── Settings
+That last line matters: a client never sees a raw stack trace or an internal Mongoose message —
+only `errorHandler` decides what leaves the server.
+
+---
+
+## 13. runValidators — Why Updates Skip Schema Validation by Default
+
+Mongoose runs schema validators (`required`, `min`, `max`, `enum`, ...) automatically on
+`.save()` and `.create()`. It does **not** run them on `findOneAndUpdate` / `updateOne` unless
+you explicitly ask:
+
+```js
+// focusScore has { min: 1, max: 10 } in the schema — but this still saves focusScore: 999,
+// because update queries skip validators by default:
+Reflection.findOneAndUpdate({ userId, date }, { $set: { focusScore: 999 } })
+
+// This actually enforces the schema:
+Reflection.findOneAndUpdate({ userId, date }, { $set: { focusScore: 999 } }, { runValidators: true })
+// → throws ValidationError → caught by asyncHandler → classified by errorHandler → 400
+```
+
+The reasoning (per Mongoose's docs) is that update operators like `$inc` or `$push` can't always
+be validated the same way a full document can — so Mongoose defaults to *not* validating updates
+at all, rather than validating them inconsistently. In practice this means: if a route lets a
+user PATCH a field with a schema constraint, `runValidators: true` has to be added by hand, or
+the constraint is silent dead code.
+
+---
+
+## 14. Fail-Fast Config, Helmet, and Rate Limiting
+
+Three small, unrelated-looking additions that all serve the same purpose — catching a class of
+mistake at the earliest possible moment instead of the latest:
+
+**Fail-fast on missing config.** `process.env.JWT_SECRET` being `undefined` doesn't crash
+anything by itself — `jwt.sign(payload, undefined, ...)` only breaks the *first time someone logs
+in*, in production, as a confusing runtime error. Checking required env vars once at boot and
+calling `process.exit(1)` if they're missing turns a delayed, confusing failure into an immediate,
+obvious one:
+
+```js
+if (!process.env.JWT_SECRET) {
+  console.error('JWT_SECRET is not set — refusing to start')
+  process.exit(1)
+}
+```
+
+**Helmet.** A drop-in middleware (`app.use(helmet())`) that sets a batch of response headers
+closing off a handful of well-known browser-side attack classes (clickjacking, MIME-sniffing,
+etc.). It doesn't change any application logic — it's pure defense-in-depth for free.
+
+**Rate limiting on `/api/auth`.** `bcrypt.compare` is *deliberately* slow — that's what makes it
+resistant to offline password cracking — which also makes it a cheap way for an attacker to burn
+your server's CPU by hammering `/api/auth/login`. `express-rate-limit` caps attempts per IP:
+
+```js
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 })
+app.use('/api/auth', authLimiter, authRoutes)
+```
+
+`app.set('trust proxy', 1)` has to be set alongside this on Railway (or any host behind a reverse
+proxy) — without it, every request looks like it's coming from the proxy's own IP, so the rate
+limiter would lump every real user into one shared bucket instead of limiting per-user.
+
+---
+
+## 15. "Today" Is Harder Than `new Date()` — the localDate Pattern
+
+`new Date(); d.setHours(0, 0, 0, 0)` looks like it computes "midnight today." It actually computes
+midnight *in whatever timezone the Node process's environment happens to be configured for* —
+which is a property of the machine running the code, not of the user sitting at a keyboard
+somewhere else. Two concrete failure modes follow from that:
+
+1. **Dev vs. prod drift.** A laptop set to IST and a Railway container set to UTC compute two
+   different instants for "midnight today" from the exact same code — behavior that looks correct
+   in local testing can misbehave in production for no code-level reason.
+2. **Wrong day near midnight.** Even fully consistent, a server anchored on UTC still isn't
+   anchored on the *user's* midnight. A user in India acting at 1am local time is, from UTC's
+   perspective, still on the previous UTC day — a server using its own clock would silently log
+   that action against yesterday.
+
+The fix has two parts. First, all day-boundary math (`server/utils/dateOnly.js` and the helpers in
+`habits.service.js`) uses **UTC methods exclusively** — `getUTCDate`, `setUTCHours`, never their
+local-time counterparts — so the server's own arithmetic no longer depends on the host's
+timezone. Second, and more fundamentally: only the client actually knows the user's real local
+time, so the client computes today's date (`client/src/lib/date.ts`'s `todayLocalDateString()`,
+using local `Date` getters — deliberately *not* `toISOString()`, which converts to UTC and
+reintroduces the exact same midnight-boundary bug) and sends it as a plain `'YYYY-MM-DD'` string.
+The server's job shrinks to something much simpler and more reliable: take that string, anchor it
+to UTC midnight for consistent storage, and never guess.
+
+```js
+function parseDateOnly(dateStr) {
+  const [year, month, day] = dateStr.split('-').map(Number)
+  return new Date(Date.UTC(year, month - 1, day))
+}
+```
+
+Older/test clients that don't send `localDate` still work — `resolveDateOnly` falls back to the
+server's own UTC calendar day — but that fallback is exactly the one remaining place "today" can
+still drift from the user's actual day.
+
+---
+
+## 16. What's Next
+
+```
+Backend: ✅ all Phase 1 routes + a pre-deploy hardening pass (2026-07-07)
+Frontend: ✅ all Phase 1 screens + a visual/resilience pass (2026-07-07/08)
+  ├── loading/error states (QueryState), global toast, shared Modal
+  ├── dark mode, Inter font, dashboard stat strip, daily quote
+  └── skeleton loaders
+
+Remaining: Deploy — Vercel (frontend) + Railway (backend) + MongoDB Atlas
 ```
 
 ---

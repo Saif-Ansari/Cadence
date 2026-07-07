@@ -39,7 +39,7 @@ async function updateTask(userId, taskId, updates) {
   const filtered = Object.fromEntries(
     Object.entries(updates).filter(([key]) => allowed.includes(key))
   )
-  return Task.findOneAndUpdate({ _id: taskId, userId }, filtered, { new: true })
+  return Task.findOneAndUpdate({ _id: taskId, userId }, filtered, { new: true, runValidators: true })
 }
 
 async function deleteTask(userId, taskId) {

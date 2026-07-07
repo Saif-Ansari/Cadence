@@ -1,1 +1,23 @@
 @import "tailwindcss";
+
+/* Tailwind v4 dark mode is CSS-declared, not JS-configured. This makes
+   `dark:` activate from a `.dark` class on <html> (toggled in Settings and
+   applied at boot in main.tsx) instead of the OS prefers-color-scheme. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* CLAUDE.md specs Inter as the design font — this makes Tailwind's default
+     sans stack (applied to html/body via preflight) actually use it. */
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Used by components/ui/Modal.tsx via animate-[modalFadeIn_...] / animate-[modalScaleIn_...] */
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalScaleIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}

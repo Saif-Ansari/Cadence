@@ -259,15 +259,16 @@ The dashboard is the home screen. It gives the user a snapshot of everything wit
 | Section | Content |
 |---|---|
 | Streak | Consecutive login days — shown in the greeting header row alongside the user avatar |
+| Quote | One motivational quote, rotated daily (same source list as the auth screen) — a quiet anchor line under the greeting, not a headline |
 | Goals | Active goals with progress % and ON TRACK / AT RISK / OVERDUE status badges |
 | Today's Tasks | Tasks due today or without a due date — check off without leaving dashboard |
 | Habits | Active habits with this week's completion grid |
 
 The dashboard is read + act: the user can mark habit days, tick off tasks, and see their goal progress without navigating away.
 
-**Layout:** Two-column grid. Left column (wider): Goals. Right column: Today's tasks + Habits. Greeting row spans full width at the top with streak badge and avatar on the right.
+**Layout:** Two-column grid. Left column (wider): Goals. Right column: Today's tasks + Habits. Greeting row spans full width at the top with streak badge and avatar on the right, followed by the daily quote line.
 
-**Removed:** Motivational quote (removed — added noise without enough content to justify it). "What Matters Most" section deferred — requires a priority system on tasks (Phase 2).
+**Reversed 2026-07-08:** the motivational quote was previously removed as noise, then restored — CLAUDE.md documents it as a deliberate feature and a Paper dark-mode mock of this screen shows it present. Kept as a single quiet line, not a prominent card, to avoid the original "noise" complaint. "What Matters Most" section still deferred — requires a priority system on tasks (Phase 2).
 
 ---
 

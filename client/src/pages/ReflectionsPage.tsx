@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { X, ChevronRight, ChevronLeft } from 'lucide-react'
 import UserMenu from '../components/layout/UserMenu'
+import QueryState from '../components/ui/QueryState'
+import Skeleton from '../components/ui/Skeleton'
+import Modal, { ModalTitle } from '../components/ui/Modal'
 import { reflectionsService } from '../services/reflections.service'
 import type { Reflection } from '../types'
 
@@ -24,8 +27,24 @@ function formatYear(iso: string) {
   return new Date(iso).getFullYear().toString()
 }
 
+function ReflectionsListSkeleton() {
+  return (
+    <div className='space-y-4'>
+      {[0, 1, 2].map((i) => (
+        <div key={i} className='px-3 space-y-1.5'>
+          <div className='flex items-baseline justify-between gap-2'>
+            <Skeleton className='h-3.5 w-20' />
+            <Skeleton className='h-3 w-10' />
+          </div>
+          <Skeleton className='h-3 w-full' />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function scoreColor(score?: number) {
-  if (!score) return 'text-slate-400'
+  if (!score) return 'text-slate-400 dark:text-slate-500'
   if (score >= 7) return 'text-teal-600'
   if (score >= 5) return 'text-amber-500'
   return 'text-red-400'
@@ -56,7 +75,12 @@ function ReflectionsPage() {
     queryFn: () => reflectionsService.getToday(),
   })
 
-  const { data: allData } = useQuery({
+  const {
+    data: allData,
+    isLoading: allLoading,
+    isError: allError,
+    refetch: refetchAll,
+  } = useQuery({
     queryKey: ['reflections'],
     queryFn: () => reflectionsService.getAll(),
   })
@@ -103,12 +127,12 @@ function ReflectionsPage() {
       <div className='px-4 pt-4 lg:px-8 lg:pt-8 pb-0 flex-shrink-0'>
         <div className='flex items-center justify-between mb-6'>
           <div>
-            <h1 className='text-2xl font-semibold text-slate-900'>Reflections</h1>
-            <p className='text-sm text-slate-500 mt-1'>{todayLabel()}</p>
+            <h1 className='text-2xl font-semibold text-slate-900 dark:text-slate-100'>Reflections</h1>
+            <p className='text-sm text-slate-500 dark:text-slate-400 mt-1'>{todayLabel()}</p>
           </div>
           <UserMenu />
         </div>
-        <div className='border-b border-slate-100' />
+        <div className='border-b border-slate-100 dark:border-slate-800' />
       </div>
 
       {/* Two-column body */}
@@ -121,63 +145,63 @@ function ReflectionsPage() {
         <div className='max-w-2xl space-y-6'>
 
           <div>
-            <label className='block text-sm font-semibold text-slate-800 mb-2'>Overall, how was your day?</label>
+            <label className='block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2'>Overall, how was your day?</label>
             <textarea
               value={overallDay}
               onChange={(e) => setOverallDay(e.target.value)}
               placeholder='Describe how your day went overall...'
               rows={2}
-              className='w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none'
+              className='w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none'
             />
           </div>
 
           <div>
-            <label className='block text-sm font-semibold text-slate-800 mb-2'>What did you accomplish?</label>
+            <label className='block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2'>What did you accomplish?</label>
             <textarea
               value={accomplished}
               onChange={(e) => setAccomplished(e.target.value)}
               placeholder='List what you completed today...'
               rows={2}
-              className='w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none'
+              className='w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none'
             />
           </div>
 
           <div>
-            <label className='block text-sm font-semibold text-slate-800 mb-2'>Win of the day</label>
+            <label className='block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2'>Win of the day</label>
             <input
               type='text'
               value={win}
               onChange={(e) => setWin(e.target.value)}
               placeholder='What was your biggest win today?'
-              className='w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500'
+              className='w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500'
             />
           </div>
 
           <div>
-            <label className='block text-sm font-semibold text-slate-800 mb-2'>What did you waste time on?</label>
+            <label className='block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2'>What did you waste time on?</label>
             <textarea
               value={wastedTime}
               onChange={(e) => setWastedTime(e.target.value)}
               placeholder='Be honest — where did time slip away?'
               rows={2}
-              className='w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none'
+              className='w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none'
             />
           </div>
 
           <div>
-            <label className='block text-sm font-semibold text-slate-800 mb-2'>What can be improved?</label>
+            <label className='block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2'>What can be improved?</label>
             <textarea
               value={improvement}
               onChange={(e) => setImprovement(e.target.value)}
               placeholder='What would you do differently tomorrow?'
               rows={2}
-              className='w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none'
+              className='w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none'
             />
           </div>
 
           {/* Focus score */}
           <div>
-            <label className='block text-sm font-semibold text-slate-800 mb-3'>How focused were you today?</label>
+            <label className='block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3'>How focused were you today?</label>
             <div className='flex flex-wrap gap-2'>
               {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
                 <button
@@ -187,7 +211,7 @@ function ReflectionsPage() {
                   className={`w-10 h-10 rounded-lg text-sm font-medium border transition-colors cursor-pointer ${
                     focusScore === n
                       ? 'bg-teal-600 border-teal-600 text-white'
-                      : 'border-slate-200 text-slate-500 hover:border-teal-400 hover:text-teal-600'
+                      : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-teal-400 hover:text-teal-600'
                   }`}
                 >
                   {n}
@@ -195,8 +219,8 @@ function ReflectionsPage() {
               ))}
             </div>
             <div className='flex justify-between mt-1.5'>
-              <span className='text-xs text-slate-400'>Scattered</span>
-              <span className='text-xs text-slate-400'>Deep focus</span>
+              <span className='text-xs text-slate-400 dark:text-slate-500'>Scattered</span>
+              <span className='text-xs text-slate-400 dark:text-slate-500'>Deep focus</span>
             </div>
           </div>
 
@@ -225,22 +249,23 @@ function ReflectionsPage() {
       </div>
 
       {/* Right panel — recent history (hidden on mobile) */}
-      <div className='hidden lg:flex w-[300px] flex-shrink-0 border-l border-slate-100 flex-col'>
+      <div className='hidden lg:flex w-[300px] flex-shrink-0 border-l border-slate-100 dark:border-slate-800 flex-col'>
         <div className='p-6 flex-1 overflow-y-auto'>
-          <p className='text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-4'>Recent Reflections</p>
+          <p className='text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4'>Recent Reflections</p>
 
+          <QueryState isLoading={allLoading} isError={allError} onRetry={refetchAll} skeleton={<ReflectionsListSkeleton />}>
           {recent.length === 0 ? (
-            <p className='text-xs text-slate-400'>No reflections yet.</p>
+            <p className='text-xs text-slate-400 dark:text-slate-500'>No reflections yet.</p>
           ) : (
             <div className='space-y-px'>
               {recent.map((r) => (
                 <button
                   key={r._id}
                   onClick={() => setDetailReflection(r)}
-                  className='w-full text-left px-3 py-3 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer group'
+                  className='w-full text-left px-3 py-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer group'
                 >
                   <div className='flex items-baseline justify-between gap-2 mb-1'>
-                    <span className='text-sm font-semibold text-slate-800 group-hover:text-teal-700 transition-colors'>
+                    <span className='text-sm font-semibold text-slate-800 dark:text-slate-200 group-hover:text-teal-700 transition-colors'>
                       {formatShortDate(r.date)}
                     </span>
                     {r.focusScore && (
@@ -250,17 +275,18 @@ function ReflectionsPage() {
                     )}
                   </div>
                   {r.overallDay && (
-                    <p className='text-xs text-slate-500 line-clamp-2'>{r.overallDay}</p>
+                    <p className='text-xs text-slate-500 dark:text-slate-400 line-clamp-2'>{r.overallDay}</p>
                   )}
                 </button>
               ))}
             </div>
           )}
+          </QueryState>
         </div>
 
         {/* View all footer */}
         {reflections.length > 0 && (
-          <div className='border-t border-slate-100 px-6 py-4'>
+          <div className='border-t border-slate-100 dark:border-slate-800 px-6 py-4'>
             <button
               onClick={() => setShowHistory(true)}
               className='flex items-center gap-1.5 text-sm font-medium text-teal-600 hover:text-teal-700 cursor-pointer transition-colors'
@@ -275,22 +301,18 @@ function ReflectionsPage() {
       </div>{/* end two-column body */}
 
       {/* History modal */}
-      {showHistory && (
-        <div
-          className='fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4'
-          onClick={(e) => e.target === e.currentTarget && setShowHistory(false)}
-        >
-          <div className='bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col'>
+      <Modal open={showHistory} onClose={() => setShowHistory(false)} size='lg'>
+          <div className='max-h-[80vh] flex flex-col'>
 
             {/* Header */}
-            <div className='flex items-start justify-between p-6 pb-4 border-b border-slate-100'>
+            <div className='flex items-start justify-between p-6 pb-4 border-b border-slate-100 dark:border-slate-800'>
               <div>
-                <h2 className='text-base font-semibold text-slate-900'>All Reflections</h2>
-                <p className='text-sm text-slate-400 mt-0.5'>{reflections.length} {reflections.length === 1 ? 'entry' : 'entries'}</p>
+                <ModalTitle className='text-base font-semibold text-slate-900 dark:text-slate-100'>All Reflections</ModalTitle>
+                <p className='text-sm text-slate-400 dark:text-slate-500 mt-0.5'>{reflections.length} {reflections.length === 1 ? 'entry' : 'entries'}</p>
               </div>
               <button
                 onClick={() => setShowHistory(false)}
-                className='w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 cursor-pointer transition-colors'
+                className='w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-500 dark:text-slate-400 cursor-pointer transition-colors'
               >
                 <X size={14} />
               </button>
@@ -302,15 +324,15 @@ function ReflectionsPage() {
                 <div key={r._id}>
                   <button
                     onClick={() => { setDetailReflection(r); setShowHistory(false) }}
-                    className='w-full flex items-center gap-4 px-6 py-4 hover:bg-slate-50 transition-colors cursor-pointer text-left'
+                    className='w-full flex items-center gap-4 px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer text-left'
                   >
                     <div className='flex-1 min-w-0'>
                       <div className='flex items-baseline gap-2 mb-1'>
-                        <span className='text-sm font-semibold text-slate-900'>{formatShortDate(r.date)}</span>
-                        <span className='text-xs text-slate-400'>{formatYear(r.date)}</span>
+                        <span className='text-sm font-semibold text-slate-900 dark:text-slate-100'>{formatShortDate(r.date)}</span>
+                        <span className='text-xs text-slate-400 dark:text-slate-500'>{formatYear(r.date)}</span>
                       </div>
                       {r.overallDay && (
-                        <p className='text-xs text-slate-500 truncate'>{r.overallDay}</p>
+                        <p className='text-xs text-slate-500 dark:text-slate-400 truncate'>{r.overallDay}</p>
                       )}
                     </div>
                     <div className='flex items-center gap-2.5 flex-shrink-0'>
@@ -319,37 +341,33 @@ function ReflectionsPage() {
                           {r.focusScore} / 10
                         </span>
                       )}
-                      <ChevronRight size={14} className='text-slate-300' />
+                      <ChevronRight size={14} className='text-slate-300 dark:text-slate-600' />
                     </div>
                   </button>
-                  {i < reflections.length - 1 && <div className='h-px bg-slate-50 mx-6' />}
+                  {i < reflections.length - 1 && <div className='h-px bg-slate-50 dark:bg-slate-800 mx-6' />}
                 </div>
               ))}
             </div>
 
           </div>
-        </div>
-      )}
+      </Modal>
 
       {/* Entry detail modal */}
-      {detailReflection && (
-        <div
-          className='fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4'
-          onClick={(e) => e.target === e.currentTarget && setDetailReflection(null)}
-        >
-          <div className='bg-white rounded-2xl shadow-xl w-full max-w-xl max-h-[85vh] flex flex-col'>
+      <Modal open={detailReflection !== null} onClose={() => setDetailReflection(null)} size='xl'>
+        {detailReflection && (
+          <div className='max-h-[85vh] flex flex-col'>
 
             {/* Header */}
-            <div className='flex items-start justify-between p-6 pb-5 border-b border-slate-100'>
+            <div className='flex items-start justify-between p-6 pb-5 border-b border-slate-100 dark:border-slate-800'>
               <div>
-                <h2 className='text-base font-semibold text-slate-900'>{formatDate(detailReflection.date)}</h2>
+                <ModalTitle className='text-base font-semibold text-slate-900 dark:text-slate-100'>{formatDate(detailReflection.date)}</ModalTitle>
                 {detailReflection.focusScore && (
                   <div className='flex items-center gap-2 mt-1.5'>
-                    <span className='text-[11px] font-semibold text-slate-400 uppercase tracking-wide'>Focus score</span>
+                    <span className='text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide'>Focus score</span>
                     <span className={`text-sm font-bold ${scoreColor(detailReflection.focusScore)}`}>
                       {detailReflection.focusScore} / 10
                     </span>
-                    <span className='text-xs text-slate-400'>· {FOCUS_LABELS[detailReflection.focusScore]}</span>
+                    <span className='text-xs text-slate-400 dark:text-slate-500'>· {FOCUS_LABELS[detailReflection.focusScore]}</span>
                   </div>
                 )}
               </div>
@@ -357,13 +375,13 @@ function ReflectionsPage() {
                 <button
                   onClick={() => { setDetailReflection(null); setShowHistory(true) }}
                   title='Back to list'
-                  className='w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 cursor-pointer transition-colors'
+                  className='w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-500 dark:text-slate-400 cursor-pointer transition-colors'
                 >
                   <ChevronLeft size={14} />
                 </button>
                 <button
                   onClick={() => setDetailReflection(null)}
-                  className='w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 cursor-pointer transition-colors'
+                  className='w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-500 dark:text-slate-400 cursor-pointer transition-colors'
                 >
                   <X size={14} />
                 </button>
@@ -382,16 +400,16 @@ function ReflectionsPage() {
                 .filter((f) => f.value)
                 .map((f, i, arr) => (
                   <div key={f.label}>
-                    <p className='text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5'>{f.label}</p>
-                    <p className='text-sm text-slate-700 leading-relaxed'>{f.value}</p>
-                    {i < arr.length - 1 && <div className='h-px bg-slate-100 mt-5' />}
+                    <p className='text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-1.5'>{f.label}</p>
+                    <p className='text-sm text-slate-700 dark:text-slate-300 leading-relaxed'>{f.value}</p>
+                    {i < arr.length - 1 && <div className='h-px bg-slate-100 dark:bg-slate-800 mt-5' />}
                   </div>
                 ))}
             </div>
 
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
 
     </div>
   )

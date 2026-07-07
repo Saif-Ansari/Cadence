@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const User = require('../models/User')
 const CheckIn = require('../models/CheckIn')
+const { resolveDateOnly } = require('../utils/dateOnly')
 
 function signToken(userId) {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: '7d' })
@@ -26,7 +27,7 @@ async function signup(name, email, password) {
   }
 }
 
-async function login(email, password) {
+async function login(email, password, localDate) {
   const user = await User.findOne({ email })
 
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
@@ -39,10 +40,10 @@ async function login(email, password) {
   user.loginCount += 1
   await user.save()
 
-  await recordCheckIn(user._id)
+  await recordCheckIn(user._id, localDate)
 
   const token = signToken(user._id)
-  const streak = await getStreak(user._id)
+  const streak = await getStreak(user._id, localDate)
 
   return {
     token,
@@ -50,9 +51,8 @@ async function login(email, password) {
   }
 }
 
-async function recordCheckIn(userId) {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+async function recordCheckIn(userId, localDate) {
+  const today = resolveDateOnly(localDate)
 
   await CheckIn.updateOne(
     { userId, date: today },
@@ -61,28 +61,25 @@ async function recordCheckIn(userId) {
   )
 }
 
-async function getStreak(userId) {
+async function getStreak(userId, localDate) {
   const checkIns = await CheckIn.find({ userId }).sort({ date: -1 })
   if (checkIns.length === 0) return 0
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const today = resolveDateOnly(localDate)
 
   // Walk backwards from today; if user hasn't checked in today, start from yesterday
   let expected = new Date(today)
   const latest = new Date(checkIns[0].date)
-  latest.setHours(0, 0, 0, 0)
   if (latest.getTime() < today.getTime()) {
-    expected.setDate(expected.getDate() - 1)
+    expected.setUTCDate(expected.getUTCDate() - 1)
   }
 
   let streak = 0
   for (const checkIn of checkIns) {
     const day = new Date(checkIn.date)
-    day.setHours(0, 0, 0, 0)
     if (day.getTime() === expected.getTime()) {
       streak++
-      expected.setDate(expected.getDate() - 1)
+      expected.setUTCDate(expected.getUTCDate() - 1)
     } else if (day.getTime() < expected.getTime()) {
       break
     }

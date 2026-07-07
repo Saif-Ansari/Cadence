@@ -16,7 +16,7 @@ async function updateStep(userId, stepId, updates) {
   const filtered = Object.fromEntries(
     Object.entries(updates).filter(([k]) => allowed.includes(k))
   )
-  const step = await Step.findOneAndUpdate({ _id: stepId, userId }, filtered, { new: true })
+  const step = await Step.findOneAndUpdate({ _id: stepId, userId }, filtered, { new: true, runValidators: true })
   if (!step) {
     const err = new Error('Step not found')
     err.status = 404

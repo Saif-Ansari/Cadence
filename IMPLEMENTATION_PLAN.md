@@ -258,24 +258,24 @@ Frontend:
 
 #### Weekend 11 — Aug 30–31
 **Backend + Frontend: Settings**
-- [ ] `PATCH /api/users/email` — update email (requires password confirmation)
-- [ ] `PATCH /api/users/password` — change password (requires current password)
-- [ ] Settings screen UI — Theme toggle (light/dark), email change, password change
-- [ ] Dark mode — Tailwind `dark:` classes, store preference in localStorage
+- [ ] `PATCH /api/users/email` — update email (requires password confirmation) — not built; email change is not currently a feature
+- [x] `PATCH /api/users/password` — change password (requires current password) — shipped as `PATCH /api/auth/password`
+- [x] Settings screen UI — Theme toggle (light/dark), password change (email change not built, see above)
+- [x] Dark mode — Tailwind `dark:` classes, store preference in localStorage — done 2026-07-08, using Tailwind v4's `@custom-variant dark` instead of the old JS `darkMode: 'class'` config
 
 #### Weekend 12 — Sep 6–7
 **Polish — backend**
-- [ ] Input validation on all routes (express-validator or zod)
-- [ ] Consistent error shape: `{ error: { code, message } }`
-- [ ] Rate limiting on auth routes
-- [ ] Attach `userId` filter to every query (data isolation audit)
-- [ ] Basic request logging (morgan)
+- [ ] Input validation on all routes (express-validator or zod) — still ad-hoc per-controller checks, no dedicated library
+- [x] Consistent error shape: `{ error: { code, message } }` — centralized in `server/middleware/errorHandler.js` (2026-07-07)
+- [x] Rate limiting on auth routes — done 2026-07-07
+- [x] Attach `userId` filter to every query (data isolation audit) — confirmed clean in the 2026-07-07 backend review, no IDOR found
+- [ ] Basic request logging (morgan) — not done
 
 **Polish — frontend**
-- [ ] Empty states on every screen (no goals yet, no habits, etc.)
-- [ ] Loading states and error handling for all API calls
-- [ ] Form validation feedback (inline errors)
-- [ ] Google OAuth button (wired up — backend Passport.js strategy)
+- [x] Empty states on every screen (no goals yet, no habits, etc.)
+- [x] Loading states and error handling for all API calls — `<QueryState>` + global toast, done 2026-07-07/08
+- [ ] Form validation feedback (inline errors) — partial (password mismatch etc.); no systematic pass
+- [ ] Google OAuth button (wired up — backend Passport.js strategy) — not done
 
 #### Weekend 13 — Sep 13–14
 **Deploy**
@@ -323,4 +323,4 @@ Reflections backend    ──→  Reflections frontend
 - **Google OAuth** — deferred to polish phase. Email/password auth ships first; Google is additive.
 - **Forgot password** — deferred to Phase 2. Requires email sending (reset link via a mail service like Resend or SendGrid). Link is visible on the login screen in Phase 1 but non-functional.
 - **TypeScript strictness** — start with `"strict": false` if needed; tighten later. Don't let the type system block momentum.
-- **Dark mode** — design is done in Paper. Implementation uses Tailwind `dark:` variant + a class toggle on `<html>`. Keep it for Settings weekend.
+- **Dark mode** — ✅ done 2026-07-08, ahead of the original Weekend 11 slot (built during a pre-deploy hardening/polish pass instead). Uses Tailwind v4's `@custom-variant dark (&:where(.dark, .dark *));` (declared in `client/src/index.css`) + a `.dark` class toggle on `<html>`, applied at boot and from Settings via `client/src/lib/theme.ts`.

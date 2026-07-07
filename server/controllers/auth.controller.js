@@ -1,9 +1,17 @@
 const authService = require('../services/auth.service')
+const asyncHandler = require('../utils/asyncHandler')
+
+// MongoDB query operators (e.g. { "$gt": "" }) are truthy, so a plain `!email`
+// check lets them through — they'd reach User.findOne({ email }) as a live
+// query operator instead of a literal string. Require strings explicitly.
+function isNonEmptyString(value) {
+  return typeof value === 'string' && value.length > 0
+}
 
 async function signup(req, res) {
   const { name, email, password } = req.body
 
-  if (!name || !email || !password) {
+  if (!isNonEmptyString(name) || !isNonEmptyString(email) || !isNonEmptyString(password)) {
     return res.status(400).json({ error: { code: 'MISSING_FIELDS', message: 'Name, email and password are required' } })
   }
 
@@ -11,27 +19,19 @@ async function signup(req, res) {
     return res.status(400).json({ error: { code: 'WEAK_PASSWORD', message: 'Password must be at least 8 characters' } })
   }
 
-  try {
-    const result = await authService.signup(name, email, password)
-    res.status(201).json(result)
-  } catch (err) {
-    res.status(err.status || 500).json({ error: { code: err.code || 'SERVER_ERROR', message: err.message } })
-  }
+  const result = await authService.signup(name, email, password)
+  res.status(201).json(result)
 }
 
 async function login(req, res) {
-  const { email, password } = req.body
+  const { email, password, localDate } = req.body
 
-  if (!email || !password) {
+  if (!isNonEmptyString(email) || !isNonEmptyString(password)) {
     return res.status(400).json({ error: { code: 'MISSING_FIELDS', message: 'Email and password are required' } })
   }
 
-  try {
-    const result = await authService.login(email, password)
-    res.json(result)
-  } catch (err) {
-    res.status(err.status || 500).json({ error: { code: err.code || 'SERVER_ERROR', message: err.message } })
-  }
+  const result = await authService.login(email, password, localDate)
+  res.json(result)
 }
 
 function logout(req, res) {
@@ -39,29 +39,27 @@ function logout(req, res) {
 }
 
 async function me(req, res) {
-  try {
-    const streak = await authService.getStreak(req.user._id)
-    const u = req.user
-    res.json({ user: { id: u._id, name: u.name, email: u.email, loginCount: u.loginCount, streak } })
-  } catch (err) {
-    res.status(500).json({ error: { message: err.message } })
-  }
+  const streak = await authService.getStreak(req.user._id, req.query.localDate)
+  const u = req.user
+  res.json({ user: { id: u._id, name: u.name, email: u.email, loginCount: u.loginCount, streak } })
 }
 
 async function changePassword(req, res) {
   const { currentPassword, newPassword } = req.body
-  if (!currentPassword || !newPassword) {
+  if (!isNonEmptyString(currentPassword) || !isNonEmptyString(newPassword)) {
     return res.status(400).json({ error: { message: 'currentPassword and newPassword are required' } })
   }
   if (newPassword.length < 8) {
     return res.status(400).json({ error: { message: 'New password must be at least 8 characters' } })
   }
-  try {
-    await authService.changePassword(req.user._id, currentPassword, newPassword)
-    res.json({ message: 'Password updated' })
-  } catch (err) {
-    res.status(err.status || 500).json({ error: { code: err.code, message: err.message } })
-  }
+  await authService.changePassword(req.user._id, currentPassword, newPassword)
+  res.json({ message: 'Password updated' })
 }
 
-module.exports = { signup, login, logout, me, changePassword }
+module.exports = {
+  signup: asyncHandler(signup),
+  login: asyncHandler(login),
+  logout,
+  me: asyncHandler(me),
+  changePassword: asyncHandler(changePassword),
+}

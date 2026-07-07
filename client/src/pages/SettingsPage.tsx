@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { Sun, Moon } from 'lucide-react'
 import UserMenu from '../components/layout/UserMenu'
 import { useAuthStore } from '../store/auth.store'
 import { api } from '../lib/api'
+import { applyTheme, getStoredTheme, type Theme } from '../lib/theme'
 
 function SettingsPage() {
   const user = useAuthStore((s) => s.user)
@@ -14,14 +16,11 @@ function SettingsPage() {
   const [pwSuccess, setPwSuccess] = useState(false)
   const [pwError, setPwError] = useState('')
 
-  // Theme (stored in localStorage; dark styles are Phase 2)
-  const [theme, setTheme] = useState<'light' | 'dark'>(
-    () => (localStorage.getItem('theme') as 'light' | 'dark') ?? 'light'
-  )
+  const [theme, setTheme] = useState<Theme>(getStoredTheme)
 
-  function handleTheme(t: 'light' | 'dark') {
+  function handleTheme(t: Theme) {
     setTheme(t)
-    localStorage.setItem('theme', t)
+    applyTheme(t)
   }
 
   async function handlePasswordSubmit(e: React.FormEvent) {
@@ -61,18 +60,18 @@ function SettingsPage() {
       {/* Header */}
       <div className='flex items-center justify-between mb-6'>
         <div>
-          <h1 className='text-2xl font-semibold text-slate-900'>Settings</h1>
-          <p className='text-sm text-slate-500 mt-1'>Manage your profile and preferences</p>
+          <h1 className='text-2xl font-semibold text-slate-900 dark:text-slate-100'>Settings</h1>
+          <p className='text-sm text-slate-500 dark:text-slate-400 mt-1'>Manage your profile and preferences</p>
         </div>
         <UserMenu />
       </div>
-      <div className='border-b border-slate-100 mb-8' />
+      <div className='border-b border-slate-100 dark:border-slate-800 mb-8' />
 
       <div className='max-w-2xl space-y-6'>
 
         {/* Account card */}
-        <div className='border border-slate-200 rounded-2xl p-6'>
-          <h2 className='text-base font-semibold text-slate-900 mb-5'>Account</h2>
+        <div className='border border-slate-200 dark:border-slate-700 rounded-2xl p-6'>
+          <h2 className='text-base font-semibold text-slate-900 dark:text-slate-100 mb-5'>Account</h2>
 
           {/* Profile */}
           <div className='flex items-center gap-3 mb-7'>
@@ -80,21 +79,21 @@ function SettingsPage() {
               {initial}
             </div>
             <div>
-              <p className='text-sm font-medium text-slate-900'>{user?.name}</p>
-              <p className='text-xs text-slate-500'>{user?.email}</p>
+              <p className='text-sm font-medium text-slate-900 dark:text-slate-100'>{user?.name}</p>
+              <p className='text-xs text-slate-500 dark:text-slate-400'>{user?.email}</p>
             </div>
           </div>
 
           {/* Password form */}
           <form onSubmit={handlePasswordSubmit}>
-            <p className='text-sm font-medium text-slate-700 mb-3'>Password</p>
+            <p className='text-sm font-medium text-slate-700 dark:text-slate-300 mb-3'>Password</p>
             <div className='space-y-3'>
               <input
                 type='password'
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 placeholder='Current password'
-                className='w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500'
+                className='w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500'
                 required
               />
               <input
@@ -102,7 +101,7 @@ function SettingsPage() {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder='New password'
-                className='w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500'
+                className='w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500'
                 required
               />
               <input
@@ -110,7 +109,7 @@ function SettingsPage() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder='Confirm new password'
-                className='w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500'
+                className='w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500'
                 required
               />
             </div>
@@ -133,34 +132,36 @@ function SettingsPage() {
         </div>
 
         {/* Appearance card */}
-        <div className='border border-slate-200 rounded-2xl p-6'>
-          <h2 className='text-base font-semibold text-slate-900 mb-5'>Appearance</h2>
+        <div className='border border-slate-200 dark:border-slate-700 rounded-2xl p-6'>
+          <h2 className='text-base font-semibold text-slate-900 dark:text-slate-100 mb-5'>Appearance</h2>
 
           <div className='flex items-center justify-between'>
             <div>
-              <p className='text-sm font-medium text-slate-700'>Theme</p>
-              <p className='text-xs text-slate-400 mt-0.5'>Choose between light and dark mode</p>
+              <p className='text-sm font-medium text-slate-700 dark:text-slate-300'>Theme</p>
+              <p className='text-xs text-slate-400 dark:text-slate-500 mt-0.5'>Choose between light and dark mode</p>
             </div>
-            <div className='flex rounded-lg border border-slate-200 overflow-hidden'>
+            <div className='flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden'>
               <button
                 onClick={() => handleTheme('light')}
-                className={`px-4 py-2 text-sm font-medium transition-colors cursor-pointer ${
+                className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors cursor-pointer ${
                   theme === 'light'
                     ? 'bg-teal-600 text-white'
-                    : 'text-slate-500 hover:text-slate-700 bg-white'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 bg-white dark:bg-slate-800'
                 }`}
               >
-                ☀ Light
+                <Sun size={14} />
+                Light
               </button>
               <button
                 onClick={() => handleTheme('dark')}
-                className={`px-4 py-2 text-sm font-medium transition-colors cursor-pointer border-l border-slate-200 ${
+                className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors cursor-pointer border-l border-slate-200 dark:border-slate-700 ${
                   theme === 'dark'
                     ? 'bg-teal-600 text-white'
-                    : 'text-slate-500 hover:text-slate-700 bg-white'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 bg-white dark:bg-slate-800'
                 }`}
               >
-                ☾ Dark
+                <Moon size={14} />
+                Dark
               </button>
             </div>
           </div>

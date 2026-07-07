@@ -8,3 +8,12 @@ export const quotes = [
   { text: 'Don\'t watch the clock; do what it does. Keep going.', author: 'Sam Levenson' },
   { text: 'You don\'t have to be great to start, but you have to start to be great.', author: 'Zig Ziglar' },
 ]
+
+// Same quote all day, different quote each day — a daily anchor rather than
+// a random one that could repeat back-to-back or change on every reload.
+export function getTodaysQuote() {
+  const now = new Date()
+  const startOfYear = new Date(now.getFullYear(), 0, 0)
+  const dayOfYear = Math.floor((now.getTime() - startOfYear.getTime()) / 86400000)
+  return quotes[dayOfYear % quotes.length]
+}

@@ -1,39 +1,29 @@
 const reflectionsService = require('../services/reflections.service')
+const asyncHandler = require('../utils/asyncHandler')
 
 async function getToday(req, res) {
-  try {
-    const reflection = await reflectionsService.getToday(req.user._id)
-    res.json({ reflection })
-  } catch (err) {
-    res.status(500).json({ error: { message: err.message } })
-  }
+  const reflection = await reflectionsService.getToday(req.user._id, req.query.localDate)
+  res.json({ reflection })
 }
 
 async function upsertToday(req, res) {
-  try {
-    const reflection = await reflectionsService.upsertToday(req.user._id, req.body)
-    res.json({ reflection })
-  } catch (err) {
-    res.status(err.status || 500).json({ error: { message: err.message } })
-  }
+  const reflection = await reflectionsService.upsertToday(req.user._id, req.body, req.body.localDate)
+  res.json({ reflection })
 }
 
 async function getAll(req, res) {
-  try {
-    const reflections = await reflectionsService.getAll(req.user._id)
-    res.json({ reflections })
-  } catch (err) {
-    res.status(500).json({ error: { message: err.message } })
-  }
+  const reflections = await reflectionsService.getAll(req.user._id)
+  res.json({ reflections })
 }
 
 async function getById(req, res) {
-  try {
-    const reflection = await reflectionsService.getById(req.user._id, req.params.id)
-    res.json({ reflection })
-  } catch (err) {
-    res.status(err.status || 500).json({ error: { message: err.message } })
-  }
+  const reflection = await reflectionsService.getById(req.user._id, req.params.id)
+  res.json({ reflection })
 }
 
-module.exports = { getToday, upsertToday, getAll, getById }
+module.exports = {
+  getToday: asyncHandler(getToday),
+  upsertToday: asyncHandler(upsertToday),
+  getAll: asyncHandler(getAll),
+  getById: asyncHandler(getById),
+}

@@ -26,6 +26,16 @@ describe('POST /api/auth/signup', () => {
     const res = await request(app).post('/api/auth/signup').send({ email: 'x@x.com' })
     expect(res.status).toBe(400)
   })
+
+  it('rejects a MongoDB query operator in place of a string field (NoSQL injection guard)', async () => {
+    const res = await request(app).post('/api/auth/signup').send({
+      name: 'Eve',
+      email: { $gt: '' },
+      password: 'password123',
+    })
+    expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe('MISSING_FIELDS')
+  })
 })
 
 describe('POST /api/auth/login', () => {
@@ -62,6 +72,15 @@ describe('POST /api/auth/login', () => {
       password: 'whatever',
     })
     expect(res.status).toBe(401)
+  })
+
+  it('rejects a MongoDB query operator in place of a string field (NoSQL injection guard)', async () => {
+    const res = await request(app).post('/api/auth/login').send({
+      email: { $gt: '' },
+      password: 'whatever',
+    })
+    expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe('MISSING_FIELDS')
   })
 })
 

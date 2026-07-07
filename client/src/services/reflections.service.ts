@@ -1,4 +1,5 @@
 import { api } from '../lib/api'
+import { todayLocalDateString } from '../lib/date'
 import type { Reflection } from '../types'
 
 interface ReflectionFields {
@@ -11,8 +12,9 @@ interface ReflectionFields {
 }
 
 export const reflectionsService = {
-  getToday: () => api.get<{ reflection: Reflection | null }>('/reflections/today'),
-  upsertToday: (data: ReflectionFields) => api.put<{ reflection: Reflection }>('/reflections/today', data),
+  getToday: () => api.get<{ reflection: Reflection | null }>(`/reflections/today?localDate=${todayLocalDateString()}`),
+  upsertToday: (data: ReflectionFields) =>
+    api.put<{ reflection: Reflection }>('/reflections/today', { ...data, localDate: todayLocalDateString() }),
   getAll: () => api.get<{ reflections: Reflection[] }>('/reflections'),
   getById: (id: string) => api.get<{ reflection: Reflection }>(`/reflections/${id}`),
 }

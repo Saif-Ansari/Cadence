@@ -8,8 +8,8 @@ Learn backend development hands-on while building a real portfolio project.
 taught as we build — why we use it, what breaks without it, what the trade-offs are.
 
 ## Stack
-- **Frontend:** React 18, Vite, Tailwind, TypeScript, Lucide React (icons)
-- **Backend:** Node.js, Express, MongoDB, Mongoose
+- **Frontend:** React 18, Vite, Tailwind v4, TypeScript, Lucide React (icons), TanStack Query, Zustand, `@radix-ui/react-dialog` (modal primitive — focus trap, Escape-to-close, scroll lock)
+- **Backend:** Node.js, Express, MongoDB, Mongoose, helmet, express-rate-limit
 - **Package manager:** npm
 - **Dev:** `npm run dev` from root (runs both client + server via concurrently)
 
@@ -57,13 +57,19 @@ Goals break down into **Steps** (binary progress checklists). Tasks are **standa
 - Habits consistency: `GET /api/habits/consistency` — 5-week rolling heatmap data
 - Reflections: `GET /api/reflections/today`, `PUT /api/reflections/today` (upsert), `GET /api/reflections`, `GET /api/reflections/:id`
 - Auth password: `PATCH /api/auth/password` — requires `currentPassword` + `newPassword`
+- Day-boundary convention: any endpoint whose result depends on "today" (login/check-in, `GET /api/habits`, `GET /api/habits/consistency`, `GET|PUT /api/reflections/today`, `GET /api/auth/me`) accepts an optional client-supplied `localDate` (`'YYYY-MM-DD'`, the user's real local calendar day — client computes it via `client/src/lib/date.ts`'s `todayLocalDateString()`, never `toISOString()` which is UTC and can be off by a day near midnight). The server never derives "today" from its own clock — see `server/utils/dateOnly.js`.
 
 ## UI conventions
 - Delete confirmation: always use `<DeletePopover>` (`client/src/components/ui/DeletePopover.tsx`) — never inline confirm. Click-outside closes it.
 - Delete buttons: always visible (not hover-only), default `text-red-400 hover:text-red-600`
 - Add step / add habit: modal, not inline form
+- Modals: always use `<Modal>` / `<ModalTitle>` (`client/src/components/ui/Modal.tsx`, wraps `@radix-ui/react-dialog`) — never a hand-rolled `fixed inset-0` backdrop div. Gives focus trapping, Escape-to-close, and scroll lock for free.
+- Query loading/error states: wrap query-backed sections in `<QueryState>` (`client/src/components/ui/QueryState.tsx`) instead of falling back to `data ?? []` — that fallback can't distinguish "still loading" from "request failed". Pass a `skeleton` shaped like the real content; use `<Skeleton>` (`client/src/components/ui/Skeleton.tsx`) as the building block.
+- Mutation errors: never add a per-mutation `onError` for showing failures — the global `QueryClient`'s `MutationCache.onError` (wired in `client/src/main.tsx`) already routes every failed mutation to a toast (`client/src/store/toast.store.ts` + `client/src/components/ui/ToastStack.tsx`).
 - Shared goal status logic lives in `client/src/lib/goalStatus.ts` — import `computeGoalStatus`, `STATUS_STYLES`, `STATUS_LABELS`, `PROGRESS_COLOR` from there; do not duplicate
+- Shared habit weekly-completion math lives in `client/src/lib/habitStats.ts` (`computeWeeklyRate`) — used by both HabitsPage and the Dashboard stat strip; do not duplicate
 - Responsive: sidebar is a fixed overlay on mobile (`< lg`), managed by `ProtectedLayout`; page containers use `p-4 lg:p-8` pattern; multi-column grids use `grid-cols-1 lg:grid-cols-N`
+- Dark mode: implemented via Tailwind v4's `@custom-variant dark (&:where(.dark, .dark *));` (declared in `client/src/index.css`) — `dark:` classes key off a `.dark` class on `<html>`, not the OS preference. Toggle/persist via `client/src/lib/theme.ts` (`applyTheme`/`getStoredTheme`), applied once at boot in `main.tsx` (before first render, to avoid a flash) and again from the Settings toggle. When adding new UI, pair every `bg-white`/`text-slate-*`/`border-slate-*` with a `dark:` equivalent — see existing pages for the established shade mapping (e.g. `text-slate-900` → `dark:text-slate-100`, `bg-slate-100` → `dark:bg-slate-800`).
 
 ## Build order (vertical slices)
 1. ✅ Auth (JWT) + User model
@@ -76,12 +82,17 @@ Goals break down into **Steps** (binary progress checklists). Tasks are **standa
 8. ✅ Code review — security fixes, performance (indexes, bounded queries), refactor
 9. ✅ Mobile/tablet responsive — sidebar overlay, stacking layouts
 10. ✅ Tests — Jest/Supertest integration (backend), Vitest unit (frontend)
+10.5. ✅ Pre-deploy hardening + visual pass (2026-07-07/08) — a second, more thorough review before Deploy:
+    - Backend: env-driven CORS, JWT_SECRET fail-fast, helmet + rate limiting on `/api/auth`, NoSQL-injection guard on auth inputs, centralized error middleware (`server/middleware/errorHandler.js`) replacing per-controller try/catch, `runValidators: true` on all update queries, a client-supplied `localDate` convention for day-boundary logic (check-ins/reflections/habit logs) instead of the server's own clock — see `server/utils/dateOnly.js`
+    - Frontend: `<QueryState>` loading/error handling on every page, a global toast system for mutation failures, dark mode (see UI conventions above), skeleton loaders, the Inter font, a rotating daily quote on Dashboard + Auth, a Dashboard stat strip, and the shared `<Modal>` extraction covering all 7 modals
 11. Deploy — Vercel (frontend) + Railway (backend) + MongoDB Atlas
 
 ## Testing
-- **Backend:** `cd server && npm test` — Jest + Supertest + mongodb-memory-server; tests in `server/__tests__/`
-- **Frontend:** `cd client && npm test` — Vitest; tests colocated in `__tests__/` next to source
-- Tests cover: auth (signup/login/password), goals (CRUD/cascade/NoSQL guard), reflections (upsert/isolation), goalStatus utilities
+- **Backend:** `cd server && npm test` — Jest + Supertest + mongodb-memory-server; tests in `server/__tests__/` (7 suites, 41 tests)
+- **Frontend:** `cd client && npm test` — Vitest; tests colocated in `__tests__/` next to source (5 files, 22 tests). Default environment is plain Node (no jsdom installed) — tests needing `document`/`localStorage` (e.g. `lib/theme.ts`) stub just those globals manually rather than pulling in jsdom for two lines of logic.
+- Backend coverage: auth (signup/login/password, NoSQL-injection guard on both signup and login), goals (CRUD/cascade/NoSQL guard), habits (CRUD/cascade, day toggle, weekly grid anchored on `localDate`), reflections (upsert/isolation/focusScore validation, `localDate` day-boundary behavior), `dateOnly.js` utilities (UTC anchoring, timezone-independence), rate limiting (real 429 behavior, verified by temporarily unsetting the test-mode bypass), centralized error handling (malformed id → clean 400, unknown route → JSON 404)
+- Frontend coverage: `goalStatus`, `habitStats` (`computeWeeklyRate`), `quotes` (`getTodaysQuote` daily rotation), `date` (`todayLocalDateString`), `theme` (`applyTheme`/`getStoredTheme`)
+- The `/api/auth` rate limiter (`server/app.js`) is skipped when `NODE_ENV === 'test'` (Jest sets this automatically) — the test suite's normal signup/login volume across files would otherwise risk tripping it. The real limiting behavior still has its own dedicated test that overrides the bypass.
 
 ## Key rules
 - Explain WHY before writing code

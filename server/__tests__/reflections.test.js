@@ -59,6 +59,15 @@ describe('Reflections', () => {
     expect(res.body.reflection.randomField).toBeUndefined()
   })
 
+  it('rejects a focusScore outside 1-10 on upsert', async () => {
+    const res = await request(app)
+      .put('/api/reflections/today')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ focusScore: 999 })
+    expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe('VALIDATION_ERROR')
+  })
+
   it('lists all reflections sorted by date descending', async () => {
     await request(app)
       .put('/api/reflections/today')
@@ -84,5 +93,22 @@ describe('Reflections', () => {
       .set('Authorization', `Bearer ${token}`)
     expect(res.status).toBe(200)
     expect(res.body.reflections).toHaveLength(0)
+  })
+
+  it('honors a client-supplied localDate as "today", not the server clock', async () => {
+    await request(app)
+      .put('/api/reflections/today')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ overallDay: 'Written for a specific day', localDate: '2026-03-15' })
+
+    const sameDay = await request(app)
+      .get('/api/reflections/today?localDate=2026-03-15')
+      .set('Authorization', `Bearer ${token}`)
+    expect(sameDay.body.reflection.overallDay).toBe('Written for a specific day')
+
+    const differentDay = await request(app)
+      .get('/api/reflections/today?localDate=2026-03-16')
+      .set('Authorization', `Bearer ${token}`)
+    expect(differentDay.body.reflection).toBeNull()
   })
 })

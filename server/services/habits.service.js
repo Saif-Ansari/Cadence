@@ -1,21 +1,26 @@
 const Habit = require('../models/Habit')
 const HabitLog = require('../models/HabitLog')
+const { resolveDateOnly } = require('../utils/dateOnly')
 
+// All day-boundary math here uses UTC getters/setters exclusively — never
+// local ones — so behavior doesn't depend on the server process's timezone.
+// The stored dates themselves are always UTC-midnight instants (see
+// resolveDateOnly), so treating them as UTC throughout is consistent.
 function normalizeDate(date) {
   const d = new Date(date)
-  d.setHours(0, 0, 0, 0)
+  d.setUTCHours(0, 0, 0, 0)
   return d
 }
 
 function getMondayOf(date) {
   const d = normalizeDate(date)
-  const day = d.getDay()
+  const day = d.getUTCDay()
   const diff = day === 0 ? 6 : day - 1
-  d.setDate(d.getDate() - diff)
+  d.setUTCDate(d.getUTCDate() - diff)
   return d
 }
 
-function calculateStreak(logs, targetFrequency) {
+function calculateStreak(logs, targetFrequency, localDateForStreak) {
   if (logs.length === 0) return 0
 
   // Group logs by the Monday of their week
@@ -28,11 +33,11 @@ function calculateStreak(logs, targetFrequency) {
   // Walk backwards week by week starting from last week
   // Current week is skipped — user may not have had a chance to hit target yet
   let streak = 0
-  const today = normalizeDate(new Date())
+  const today = resolveDateOnly(localDateForStreak)
   const currentMonday = getMondayOf(today)
 
   let weekStart = new Date(currentMonday)
-  weekStart.setDate(weekStart.getDate() - 7) // start from last week
+  weekStart.setUTCDate(weekStart.getUTCDate() - 7) // start from last week
 
   while (true) {
     const key = weekStart.toISOString()
@@ -41,25 +46,25 @@ function calculateStreak(logs, targetFrequency) {
     if (count < targetFrequency) break
 
     streak++
-    weekStart.setDate(weekStart.getDate() - 7) // go back one more week
+    weekStart.setUTCDate(weekStart.getUTCDate() - 7) // go back one more week
   }
 
   return streak
 }
 
-async function getHabits(userId) {
+async function getHabits(userId, localDate) {
   const habits = await Habit.find({ userId, status: 'active' }).sort({ createdAt: -1 })
 
   // Bound to 1 year — enough for any realistic streak, avoids unbounded scans
   const oneYearAgo = new Date()
-  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
+  oneYearAgo.setUTCFullYear(oneYearAgo.getUTCFullYear() - 1)
   const allLogs = await HabitLog.find({ userId, date: { $gte: oneYearAgo } })
 
   // Get current week's Monday and Sunday for the weekly grid
-  const today = normalizeDate(new Date())
+  const today = resolveDateOnly(localDate)
   const weekMonday = getMondayOf(today)
   const weekSunday = new Date(weekMonday)
-  weekSunday.setDate(weekMonday.getDate() + 6)
+  weekSunday.setUTCDate(weekMonday.getUTCDate() + 6)
 
   return habits.map((habit) => {
     const habitLogs = allLogs.filter((l) => l.habitId.toString() === habit._id.toString())
@@ -76,14 +81,14 @@ async function getHabits(userId) {
     // Build the 7-day grid — one entry per day Mon–Sun
     const weekGrid = Array.from({ length: 7 }, (_, i) => {
       const day = new Date(weekMonday)
-      day.setDate(weekMonday.getDate() + i)
+      day.setUTCDate(weekMonday.getUTCDate() + i)
       return {
         date: normalizeDate(day).toISOString(),
         done: doneDates.has(normalizeDate(day).toISOString()),
       }
     })
 
-    const streak = calculateStreak(habitLogs, habit.targetFrequency)
+    const streak = calculateStreak(habitLogs, habit.targetFrequency, localDate)
 
     return { ...habit.toObject(), weekGrid, streak }
   })
@@ -98,7 +103,7 @@ async function updateHabit(userId, habitId, updates) {
   const filtered = Object.fromEntries(
     Object.entries(updates).filter(([key]) => allowed.includes(key))
   )
-  return Habit.findOneAndUpdate({ _id: habitId, userId }, filtered, { new: true })
+  return Habit.findOneAndUpdate({ _id: habitId, userId }, filtered, { new: true, runValidators: true })
 }
 
 async function deleteHabit(userId, habitId) {
@@ -124,23 +129,23 @@ async function logHabit(userId, habitId, date) {
   return { done: true }
 }
 
-async function getConsistency(userId) {
+async function getConsistency(userId, localDate) {
   const habits = await Habit.find({ userId, status: 'active' }).sort({ createdAt: -1 })
   if (habits.length === 0) return []
 
-  const today = normalizeDate(new Date())
+  const today = resolveDateOnly(localDate)
   const thisMonday = getMondayOf(today)
 
   // Start of 5-week window (4 weeks back from this Monday)
   const startDate = new Date(thisMonday)
-  startDate.setDate(startDate.getDate() - 28)
+  startDate.setUTCDate(startDate.getUTCDate() - 28)
 
   const logs = await HabitLog.find({ userId, date: { $gte: startDate } })
 
   // Build week start dates oldest → newest
   const weeks = Array.from({ length: 5 }, (_, i) => {
     const monday = new Date(thisMonday)
-    monday.setDate(monday.getDate() - (4 - i) * 7)
+    monday.setUTCDate(monday.getUTCDate() - (4 - i) * 7)
     return monday
   })
 
@@ -149,7 +154,7 @@ async function getConsistency(userId) {
 
     const weekData = weeks.map((weekStart, idx) => {
       const weekEnd = new Date(weekStart)
-      weekEnd.setDate(weekEnd.getDate() + 7)
+      weekEnd.setUTCDate(weekEnd.getUTCDate() + 7)
       const count = habitLogs.filter((l) => {
         const d = normalizeDate(l.date)
         return d >= weekStart && d < weekEnd

@@ -19,7 +19,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
     <aside
       className={[
         'fixed lg:static inset-y-0 left-0 z-40',
-        'w-48 h-screen bg-slate-50 border-r border-slate-200 flex flex-col flex-shrink-0',
+        'w-48 h-screen bg-slate-50 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col flex-shrink-0',
         'transition-transform duration-200 ease-in-out',
         isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
       ].join(' ')}
@@ -29,7 +29,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className='w-8 h-8 bg-teal-600 rounded-lg flex items-center justify-center flex-shrink-0'>
           <LogoBarsIcon />
         </div>
-        <span className='font-semibold text-slate-900'>Cadence</span>
+        <span className='font-semibold text-slate-900 dark:text-slate-100'>Cadence</span>
       </div>
 
       {/* Nav links */}
@@ -43,8 +43,8 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
                 isActive
-                  ? 'bg-teal-50 text-teal-700 font-medium'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  ? 'bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-400 font-medium'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100'
               }`
             }
           >
@@ -62,8 +62,8 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
           className={({ isActive }) =>
             `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
               isActive
-                ? 'bg-teal-50 text-teal-700 font-medium'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                ? 'bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-400 font-medium'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100'
             }`
           }
         >
