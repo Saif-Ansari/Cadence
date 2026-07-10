@@ -15,4 +15,15 @@ export default defineConfig({
       },
     },
   },
+  preview: {
+    // `vite preview` serves the production build — mirror the dev proxy here
+    // too, so `npm run build && npm run preview` can sanity-check the
+    // production bundle locally without needing VITE_API_URL set.
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+    },
+  },
 });

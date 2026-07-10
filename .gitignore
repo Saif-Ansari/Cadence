@@ -1,5 +1,29 @@
 node_modules/
-.env
-.env.local
 dist/
 .DS_Store
+
+# Environment variables — Vite's convention includes several mode-specific
+# variants (e.g. .env.production for VITE_API_URL), not just .env/.env.local.
+# Patterns with no leading slash match at every directory depth, so this
+# covers server/.env and client/.env.production too, not just the root.
+.env
+.env.local
+.env.development
+.env.development.local
+.env.production
+.env.production.local
+.env.test
+.env.test.local
+
+# Local config created by the Vercel/Railway CLIs when linking this repo to
+# a deployed project — machine-specific, not meant to be shared.
+.vercel
+.railway
+
+# Defensive — no credential files currently in this repo, but never allow these in.
+*.pem
+*.key
+*.p12
+*.pfx
+*credentials*.json
+*service-account*.json

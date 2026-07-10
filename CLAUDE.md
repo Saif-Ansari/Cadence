@@ -58,6 +58,10 @@ Goals break down into **Steps** (binary progress checklists). Tasks are **standa
 - Reflections: `GET /api/reflections/today`, `PUT /api/reflections/today` (upsert), `GET /api/reflections`, `GET /api/reflections/:id`
 - Auth password: `PATCH /api/auth/password` — requires `currentPassword` + `newPassword`
 - Day-boundary convention: any endpoint whose result depends on "today" (login/check-in, `GET /api/habits`, `GET /api/habits/consistency`, `GET|PUT /api/reflections/today`, `GET /api/auth/me`) accepts an optional client-supplied `localDate` (`'YYYY-MM-DD'`, the user's real local calendar day — client computes it via `client/src/lib/date.ts`'s `todayLocalDateString()`, never `toISOString()` which is UTC and can be off by a day near midnight). The server never derives "today" from its own clock — see `server/utils/dateOnly.js`.
+- Signup cap: `POST /api/auth/signup` rejects with `403 SIGNUPS_CLOSED` once `User.countDocuments() >= MAX_USERS`. `MAX_USERS` is an env var, unset by default (unlimited) — dev/test never set it, so this only activates when explicitly configured for a deploy meant for a small, known group. Not tied to a specific hosting quota (MongoDB Atlas's free tier is capped by storage, not user count) — it's a safety net against an open public signup form, not a technical requirement.
+
+## Frontend/backend URL split
+The client and server are separate deploys (Vercel + Railway) on different domains — `client/src/lib/api.ts`'s `BASE_URL` is `import.meta.env.VITE_API_URL || '/api'`. In dev, the `/api` fallback works because `vite.config.ts` proxies it to `localhost:5000` (for both `vite dev` and `vite preview` — mirrored so `npm run build && npm run preview` sanity-checks the production bundle locally with zero env setup). In production, `VITE_API_URL` must be set (Vercel dashboard or `.env.production`) to the deployed Railway URL — see `client/.env.example`.
 
 ## UI conventions
 - Delete confirmation: always use `<DeletePopover>` (`client/src/components/ui/DeletePopover.tsx`) — never inline confirm. Click-outside closes it.

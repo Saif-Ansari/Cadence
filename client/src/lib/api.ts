@@ -1,4 +1,7 @@
-const BASE_URL = '/api'
+// In dev, Vite's server.proxy forwards '/api' to localhost:5000, so no env
+// var is needed. In production, the frontend (Vercel) and backend (Railway)
+// are different domains — VITE_API_URL must point at the deployed backend.
+const BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem('token')

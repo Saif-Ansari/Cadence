@@ -45,12 +45,22 @@ async function updateGoal(userId, goalId, updates) {
 }
 
 async function deleteGoal(userId, goalId) {
-  const goal = await Goal.findOneAndDelete({ _id: goalId, userId })
+  const goal = await Goal.findOne({ _id: goalId, userId })
   if (!goal) {
     const err = new Error('Goal not found')
     err.status = 404
     throw err
   }
+
+  const incompleteSteps = await Step.countDocuments({ goalId, userId, done: false })
+  if (incompleteSteps > 0) {
+    const err = new Error('Complete or remove all steps before deleting this goal')
+    err.code = 'INCOMPLETE_STEPS'
+    err.status = 409
+    throw err
+  }
+
+  await Goal.deleteOne({ _id: goalId, userId })
   await Step.deleteMany({ goalId, userId })
 }
 

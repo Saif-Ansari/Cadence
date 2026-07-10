@@ -74,7 +74,19 @@ describe('Goals CRUD', () => {
     expect(res.body.goal.title).toBe('Updated')
   })
 
-  it('deletes a goal and cascades to its steps', async () => {
+  it('deletes a goal with no steps', async () => {
+    const create = await request(app)
+      .post('/api/goals')
+      .set(authHeader(token))
+      .send({ title: 'No Steps Goal', deadline: '2026-12-31' })
+
+    const del = await request(app)
+      .delete(`/api/goals/${create.body.goal._id}`)
+      .set(authHeader(token))
+    expect(del.status).toBe(200)
+  })
+
+  it('rejects deleting a goal that has incomplete steps', async () => {
     const create = await request(app)
       .post('/api/goals')
       .set(authHeader(token))
@@ -83,6 +95,27 @@ describe('Goals CRUD', () => {
 
     await request(app).post('/api/steps').set(authHeader(token)).send({ goalId, title: 'Step 1' })
     await request(app).post('/api/steps').set(authHeader(token)).send({ goalId, title: 'Step 2' })
+
+    const del = await request(app).delete(`/api/goals/${goalId}`).set(authHeader(token))
+    expect(del.status).toBe(409)
+    expect(del.body.error.code).toBe('INCOMPLETE_STEPS')
+
+    // Nothing should have been touched
+    const remainingSteps = await Step.find({ goalId })
+    expect(remainingSteps).toHaveLength(2)
+  })
+
+  it('deletes a goal and cascades to its steps once all steps are done', async () => {
+    const create = await request(app)
+      .post('/api/goals')
+      .set(authHeader(token))
+      .send({ title: 'Goal With Steps', deadline: '2026-12-31' })
+    const goalId = create.body.goal._id
+
+    const step1 = await request(app).post('/api/steps').set(authHeader(token)).send({ goalId, title: 'Step 1' })
+    const step2 = await request(app).post('/api/steps').set(authHeader(token)).send({ goalId, title: 'Step 2' })
+    await request(app).patch(`/api/steps/${step1.body.step._id}`).set(authHeader(token)).send({ done: true })
+    await request(app).patch(`/api/steps/${step2.body.step._id}`).set(authHeader(token)).send({ done: true })
 
     const del = await request(app).delete(`/api/goals/${goalId}`).set(authHeader(token))
     expect(del.status).toBe(200)

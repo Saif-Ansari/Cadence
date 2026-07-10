@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { X, ChevronRight, ChevronLeft } from 'lucide-react'
+import { X, ChevronRight, ChevronLeft, Trash2 } from 'lucide-react'
 import UserMenu from '../components/layout/UserMenu'
 import QueryState from '../components/ui/QueryState'
 import Skeleton from '../components/ui/Skeleton'
 import Modal, { ModalTitle } from '../components/ui/Modal'
+import DeletePopover from '../components/ui/DeletePopover'
 import { reflectionsService } from '../services/reflections.service'
+import { todayLocalDateString } from '../lib/date'
 import type { Reflection } from '../types'
 
 const FOCUS_LABELS: Record<number, string> = {
@@ -69,9 +71,14 @@ function ReflectionsPage() {
   // Modal state
   const [showHistory, setShowHistory] = useState(false)
   const [detailReflection, setDetailReflection] = useState<Reflection | null>(null)
+  const [confirmDeleteReflection, setConfirmDeleteReflection] = useState(false)
 
+  // Including today's date in the key means a day boundary crossed while the
+  // tab is open creates a genuinely new query (not just a stale one), so the
+  // pre-fill effect below reliably sees a fresh (usually null) result instead
+  // of continuing to serve yesterday's cached reflection.
   const { data: todayData } = useQuery({
-    queryKey: ['reflections', 'today'],
+    queryKey: ['reflections', 'today', todayLocalDateString()],
     queryFn: () => reflectionsService.getToday(),
   })
 
@@ -85,17 +92,26 @@ function ReflectionsPage() {
     queryFn: () => reflectionsService.getAll(),
   })
 
-  // Pre-fill form when today's reflection loads
+  // Reset any pending delete confirmation whenever the viewed entry changes
+  // (opened a different one, or the modal closed) so it doesn't reappear
+  // already-open next time.
+  useEffect(() => {
+    setConfirmDeleteReflection(false)
+  }, [detailReflection])
+
+  // Sync form to today's reflection — including clearing it back to blank
+  // when there isn't one yet. A previous version only ever populated fields
+  // (`if (r) { ...set... }`) and never reset them, so a form filled in on one
+  // day kept showing that text on the next day, since a fresh day usually
+  // starts with `r` being null and the effect did nothing at all.
   useEffect(() => {
     const r = todayData?.reflection
-    if (r) {
-      setOverallDay(r.overallDay ?? '')
-      setAccomplished(r.accomplished ?? '')
-      setWin(r.win ?? '')
-      setWastedTime(r.wastedTime ?? '')
-      setImprovement(r.improvement ?? '')
-      setFocusScore(r.focusScore ?? null)
-    }
+    setOverallDay(r?.overallDay ?? '')
+    setAccomplished(r?.accomplished ?? '')
+    setWin(r?.win ?? '')
+    setWastedTime(r?.wastedTime ?? '')
+    setImprovement(r?.improvement ?? '')
+    setFocusScore(r?.focusScore ?? null)
   }, [todayData?.reflection])
 
   const upsert = useMutation({
@@ -112,6 +128,15 @@ function ReflectionsPage() {
       queryClient.invalidateQueries({ queryKey: ['reflections'] })
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
+    },
+  })
+
+  const deleteReflection = useMutation({
+    mutationFn: (id: string) => reflectionsService.deleteReflection(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reflections'] })
+      setConfirmDeleteReflection(false)
+      setDetailReflection(null)
     },
   })
 
@@ -372,6 +397,23 @@ function ReflectionsPage() {
                 )}
               </div>
               <div className='flex items-center gap-2'>
+                <div className='relative'>
+                  <button
+                    onClick={() => setConfirmDeleteReflection(true)}
+                    title='Delete reflection'
+                    className='w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-950 text-red-400 hover:text-red-600 cursor-pointer transition-colors'
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                  {confirmDeleteReflection && (
+                    <DeletePopover
+                      title='Delete reflection'
+                      itemName={formatDate(detailReflection.date)}
+                      onConfirm={() => deleteReflection.mutate(detailReflection._id)}
+                      onCancel={() => setConfirmDeleteReflection(false)}
+                    />
+                  )}
+                </div>
                 <button
                   onClick={() => { setDetailReflection(null); setShowHistory(true) }}
                   title='Back to list'

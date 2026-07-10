@@ -32,4 +32,14 @@ async function getById(userId, id) {
   return reflection
 }
 
-module.exports = { getToday, upsertToday, getAll, getById }
+async function deleteReflection(userId, id) {
+  const reflection = await Reflection.findOneAndDelete({ _id: id, userId })
+  if (!reflection) {
+    const err = new Error('Reflection not found')
+    err.status = 404
+    throw err
+  }
+  return reflection
+}
+
+module.exports = { getToday, upsertToday, getAll, getById, deleteReflection }

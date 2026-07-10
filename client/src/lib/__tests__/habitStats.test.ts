@@ -19,7 +19,7 @@ function makeHabit(targetFrequency: number, days: HabitDay[]): Habit {
 function day(offsetFromToday: number, done: boolean): HabitDay {
   const d = new Date()
   d.setDate(d.getDate() + offsetFromToday)
-  return { date: d.toISOString(), done }
+  return { date: d.toISOString(), done, beforeCreation: false }
 }
 
 describe('computeWeeklyRate', () => {

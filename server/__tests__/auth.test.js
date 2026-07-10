@@ -36,6 +36,47 @@ describe('POST /api/auth/signup', () => {
     expect(res.status).toBe(400)
     expect(res.body.error.code).toBe('MISSING_FIELDS')
   })
+
+  it('rejects new signups once MAX_USERS is reached', async () => {
+    const originalMax = process.env.MAX_USERS
+    process.env.MAX_USERS = '1'
+    try {
+      const first = await request(app).post('/api/auth/signup').send({
+        name: 'First',
+        email: 'first@test.com',
+        password: 'password123',
+      })
+      expect(first.status).toBe(201)
+
+      const second = await request(app).post('/api/auth/signup').send({
+        name: 'Second',
+        email: 'second@test.com',
+        password: 'password123',
+      })
+      expect(second.status).toBe(403)
+      expect(second.body.error.code).toBe('SIGNUPS_CLOSED')
+    } finally {
+      // process.env.MAX_USERS = undefined would coerce to the string
+      // "undefined" rather than actually unsetting it — delete instead.
+      if (originalMax === undefined) {
+        delete process.env.MAX_USERS
+      } else {
+        process.env.MAX_USERS = originalMax
+      }
+    }
+  })
+
+  it('does not enforce a cap when MAX_USERS is unset', async () => {
+    // Sanity check that the normal (unset) test/dev behavior is unaffected —
+    // this is what every other test in this file already relies on.
+    expect(process.env.MAX_USERS).toBeUndefined()
+    const res = await request(app).post('/api/auth/signup').send({
+      name: 'Uncapped',
+      email: 'uncapped@test.com',
+      password: 'password123',
+    })
+    expect(res.status).toBe(201)
+  })
 })
 
 describe('POST /api/auth/login', () => {

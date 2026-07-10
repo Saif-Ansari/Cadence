@@ -1,5 +1,7 @@
 const request = require('supertest')
 const app = require('../app')
+const Habit = require('../models/Habit')
+const HabitLog = require('../models/HabitLog')
 
 async function createUser(email = 'user@test.com') {
   const res = await request(app).post('/api/auth/signup').send({
@@ -120,6 +122,24 @@ describe('Habit day toggle + weekly grid', () => {
     expect(grid.every((day) => day.done === false)).toBe(true)
   })
 
+  it('flags days before the habit existed instead of showing them as missed', async () => {
+    // Backdate createdAt directly via the raw collection — Mongoose's
+    // `timestamps: true` silently ignores createdAt on findByIdAndUpdate/save,
+    // and the API itself has no way to set it since it's server-controlled.
+    const habitDoc = await Habit.findById(habitId)
+    await Habit.collection.updateOne({ _id: habitDoc._id }, { $set: { createdAt: new Date('2026-03-18T00:00:00.000Z') } })
+
+    const res = await request(app)
+      .get('/api/habits?localDate=2026-03-18') // same Mon 03-16 - Sun 03-22 week
+      .set('Authorization', `Bearer ${token}`)
+    const grid = res.body.habits[0].weekGrid
+
+    expect(grid[0].beforeCreation).toBe(true) // Monday 03-16
+    expect(grid[1].beforeCreation).toBe(true) // Tuesday 03-17
+    expect(grid[2].beforeCreation).toBe(false) // Wednesday 03-18 — creation day itself
+    expect(grid[3].beforeCreation).toBe(false) // Thursday 03-19
+  })
+
   it('toggling a day marks it done, and toggling again undoes it', async () => {
     const first = await request(app)
       .patch(`/api/habits/${habitId}/toggle`)
@@ -148,5 +168,41 @@ describe('Habit day toggle + weekly grid', () => {
       .set('Authorization', `Bearer ${token2}`)
       .send({ date: '2026-03-18T00:00:00.000Z' })
     expect(res.status).toBe(404)
+  })
+
+  it('does not count weeks before the habit was created toward the streak', async () => {
+    // Consecutive Mondays: 03-09, 03-16, 03-23. Habit "created" 03-16 — the
+    // week of 03-09 predates it. "Now" is 03-25 (in the 03-23 week, which the
+    // streak walk always skips), so the walk considers 03-16 (creation week,
+    // legitimate) then would consider 03-09 next if not stopped.
+    const habitDoc = await Habit.findById(habitId)
+    await Habit.collection.updateOne({ _id: habitDoc._id }, { $set: { createdAt: new Date('2026-03-16T00:00:00.000Z') } })
+
+    const targetFrequency = 3
+    await Habit.findByIdAndUpdate(habitId, { targetFrequency })
+
+    async function logDone(dateStr) {
+      await HabitLog.create({ habitId, userId: (await Habit.findById(habitId)).userId, date: new Date(dateStr) })
+    }
+
+    // Legitimate: 3 done days in the creation week (03-16 to 03-22) — meets target.
+    await logDone('2026-03-16T00:00:00.000Z')
+    await logDone('2026-03-17T00:00:00.000Z')
+    await logDone('2026-03-18T00:00:00.000Z')
+
+    // Fabricated pre-creation data (shouldn't exist under normal use, but the
+    // API doesn't currently reject it) — also meets target, for the week
+    // before the habit existed (03-09 to 03-15).
+    await logDone('2026-03-09T00:00:00.000Z')
+    await logDone('2026-03-10T00:00:00.000Z')
+    await logDone('2026-03-11T00:00:00.000Z')
+
+    const res = await request(app)
+      .get('/api/habits?localDate=2026-03-25')
+      .set('Authorization', `Bearer ${token}`)
+
+    // Streak should be 1 (only the creation week) — not 2, which is what
+    // you'd get if the pre-creation week were incorrectly counted.
+    expect(res.body.habits[0].streak).toBe(1)
   })
 })

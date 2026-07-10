@@ -21,9 +21,15 @@ async function getById(req, res) {
   res.json({ reflection })
 }
 
+async function deleteReflection(req, res) {
+  await reflectionsService.deleteReflection(req.user._id, req.params.id)
+  res.json({ message: 'Reflection deleted' })
+}
+
 module.exports = {
   getToday: asyncHandler(getToday),
   upsertToday: asyncHandler(upsertToday),
   getAll: asyncHandler(getAll),
   getById: asyncHandler(getById),
+  deleteReflection: asyncHandler(deleteReflection),
 }

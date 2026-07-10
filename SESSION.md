@@ -52,9 +52,34 @@ proxy with `curl` (signup/login/streak flow, CastError → clean 400, out-of-ran
 - PRODUCT_SPEC.md still describes goal progress via linked Tasks in a couple of places, even
   though the app pivoted to Steps (documented in CLAUDE.md) — worth a cleanup pass
 
+### Deploy prep started 2026-07-08 (user has Vercel, still needs Railway + MongoDB Atlas)
+Testing locally first, before touching hosting accounts. Two real deploy blockers found and
+fixed in the process:
+- **Cross-domain API calls** — `client/src/lib/api.ts`'s `BASE_URL` was hardcoded to `/api`,
+  which only worked because Vite's dev proxy forwards it to `localhost:5000`. In production,
+  Vercel (frontend) and Railway (backend) are different domains, so this would have silently
+  broken every API call. Fixed: `BASE_URL = import.meta.env.VITE_API_URL || '/api'` — set
+  `VITE_API_URL` in Vercel's dashboard once the Railway URL is known (see `client/.env.example`).
+  Also mirrored the proxy under Vite's `preview` config so `npm run build && npm run preview`
+  sanity-checks the real production bundle locally — verified end-to-end, works.
+- **Signup cap** — added `MAX_USERS` env var (unset = unlimited, so dev/test unaffected).
+  `POST /api/auth/signup` returns `403 SIGNUPS_CLOSED` once `User.countDocuments() >= MAX_USERS`.
+  User settled on **20** as the starting value for the actual deploy. Not tied to a specific
+  hosting quota (Atlas free tier is storage-capped at 512MB, not user-count-capped) — just a
+  safety net against an open public signup form. Verified live against the real local DB.
+- Backend now at 43 tests, frontend still 22 (the two fixes above added 2 backend tests, one of
+  which caught a real bug in its own cleanup logic: `process.env.X = undefined` coerces to the
+  *string* `"undefined"` instead of unsetting the var — fixed with `delete process.env.X` instead).
+- Local dev MongoDB (`mongodb://localhost:27017/habittracker`) had accumulated 6 test accounts
+  from verification `curl` calls during this session (`verify-`, `toast-verify-`, `stat-verify-`,
+  `modal-verify-`, `dark-verify-`, `prod-verify-` email prefixes) — user asked for them deleted,
+  done (including cascade-cleanup of their goals/habits/tasks/reflections/checkins). User's own
+  `saif@example.com` and `test@example.com` accounts were left untouched.
+
 ### Next session
-1. Deploy — Vercel (frontend) + Railway (backend) + MongoDB Atlas (IMPLEMENTATION_PLAN.md
-   Weekend 13 checklist)
+1. Deploy — Vercel (frontend, already has an account) + Railway (backend, needs account) +
+   MongoDB Atlas (needs account) — IMPLEMENTATION_PLAN.md Weekend 13 checklist. Remember to set
+   `VITE_API_URL` (Vercel), and `MONGO_URI`/`JWT_SECRET`/`CORS_ORIGINS`/`MAX_USERS=20` (Railway).
 
 ### How to resume
 Start with: **"continue from SESSION.md"**

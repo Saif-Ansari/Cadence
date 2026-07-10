@@ -17,4 +17,5 @@ export const reflectionsService = {
     api.put<{ reflection: Reflection }>('/reflections/today', { ...data, localDate: todayLocalDateString() }),
   getAll: () => api.get<{ reflections: Reflection[] }>('/reflections'),
   getById: (id: string) => api.get<{ reflection: Reflection }>(`/reflections/${id}`),
+  deleteReflection: (id: string) => api.delete<{ message: string }>(`/reflections/${id}`),
 }

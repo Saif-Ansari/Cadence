@@ -48,6 +48,8 @@ export interface Goal {
 export interface HabitDay {
   date: string
   done: boolean
+  /** The habit didn't exist yet on this day — render as disabled, not as "missed". */
+  beforeCreation: boolean
 }
 
 export interface Habit {

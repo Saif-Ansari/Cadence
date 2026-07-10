@@ -111,4 +111,34 @@ describe('Reflections', () => {
       .set('Authorization', `Bearer ${token}`)
     expect(differentDay.body.reflection).toBeNull()
   })
+
+  it('deletes a reflection', async () => {
+    const created = await request(app)
+      .put('/api/reflections/today')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ overallDay: 'To be deleted' })
+
+    const del = await request(app)
+      .delete(`/api/reflections/${created.body.reflection._id}`)
+      .set('Authorization', `Bearer ${token}`)
+    expect(del.status).toBe(200)
+
+    const list = await request(app)
+      .get('/api/reflections')
+      .set('Authorization', `Bearer ${token}`)
+    expect(list.body.reflections).toHaveLength(0)
+  })
+
+  it('returns 404 when deleting another user\'s reflection', async () => {
+    const created = await request(app)
+      .put('/api/reflections/today')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ overallDay: 'Mine' })
+
+    const token2 = await createUser('other-delete@test.com')
+    const res = await request(app)
+      .delete(`/api/reflections/${created.body.reflection._id}`)
+      .set('Authorization', `Bearer ${token2}`)
+    expect(res.status).toBe(404)
+  })
 })

@@ -261,19 +261,21 @@ function HabitsPage() {
                         const dayDate = new Date(day.date)
                         dayDate.setHours(0, 0, 0, 0)
                         const isFuture = dayDate > today
+                        const isDisabled = isFuture || day.beforeCreation
                         const isToday = i === todayIndex
                         return (
                           <button
                             key={i}
                             onClick={() =>
-                              !isFuture &&
+                              !isDisabled &&
                               toggleDay.mutate({ id: habit._id, date: day.date })
                             }
-                            disabled={isFuture}
+                            disabled={isDisabled}
+                            title={day.beforeCreation ? "Before this habit's creation" : undefined}
                             className={`w-7 h-7 rounded-full mx-auto block transition-colors ${
                               day.done
                                 ? 'bg-teal-600'
-                                : isFuture
+                                : isDisabled
                                   ? 'bg-slate-100 dark:bg-slate-800'
                                   : isToday
                                     ? 'bg-slate-200 dark:bg-slate-700 ring-2 ring-teal-400 ring-offset-1 hover:bg-teal-100 cursor-pointer'

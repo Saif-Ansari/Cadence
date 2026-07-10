@@ -355,7 +355,6 @@ function DashboardPage() {
                               {confirmDeleteTaskId === task._id && (
                                 <DeletePopover
                                   title="Delete task"
-                                  itemName={task.title}
                                   onConfirm={() => { deleteTask.mutate(task._id); setConfirmDeleteTaskId(null); }}
                                   onCancel={() => setConfirmDeleteTaskId(null)}
                                 />
@@ -464,21 +463,23 @@ function DashboardPage() {
                         const dayDate = new Date(day.date);
                         dayDate.setHours(0, 0, 0, 0);
                         const isFuture = dayDate > today;
+                        const isDisabled = isFuture || day.beforeCreation;
                         return (
                           <button
                             key={i}
                             onClick={() =>
-                              !isFuture &&
+                              !isDisabled &&
                               toggleHabit.mutate({
                                 id: habit._id,
                                 date: day.date,
                               })
                             }
-                            disabled={isFuture}
+                            disabled={isDisabled}
+                            title={day.beforeCreation ? "Before this habit's creation" : undefined}
                             className={`w-5 h-5 rounded-full transition-colors ${
                               day.done
                                 ? "bg-teal-600"
-                                : isFuture
+                                : isDisabled
                                   ? "bg-slate-100 dark:bg-slate-800"
                                   : "bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-500 cursor-pointer"
                             }`}

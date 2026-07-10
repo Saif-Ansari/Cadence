@@ -335,12 +335,17 @@ function GoalsPage() {
                       </button>
                     )}
 
-                    {/* Delete — always allowed; backend cascade-deletes steps */}
+                    {/* Delete — blocked while steps are pending; backend enforces this too */}
                     <div className='relative'>
                       <button
-                        onClick={() => setConfirmDeleteId(confirmDeleteId === goal._id ? null : goal._id)}
-                        title='Delete goal'
-                        className='w-8 h-8 flex items-center justify-center rounded-md transition-colors text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 cursor-pointer'
+                        onClick={() => allStepsDone && setConfirmDeleteId(confirmDeleteId === goal._id ? null : goal._id)}
+                        disabled={!allStepsDone}
+                        title={!allStepsDone ? `Complete or remove ${pendingSteps} pending step${pendingSteps > 1 ? 's' : ''} before deleting` : 'Delete goal'}
+                        className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${
+                          !allStepsDone
+                            ? 'text-slate-200 dark:text-slate-700 cursor-not-allowed'
+                            : 'text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 cursor-pointer'
+                        }`}
                       >
                         <Trash2 size={15} />
                       </button>

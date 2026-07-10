@@ -20,7 +20,7 @@ function getMondayOf(date) {
   return d
 }
 
-function calculateStreak(logs, targetFrequency, localDateForStreak) {
+function calculateStreak(logs, targetFrequency, localDateForStreak, createdAt) {
   if (logs.length === 0) return 0
 
   // Group logs by the Monday of their week
@@ -35,11 +35,17 @@ function calculateStreak(logs, targetFrequency, localDateForStreak) {
   let streak = 0
   const today = resolveDateOnly(localDateForStreak)
   const currentMonday = getMondayOf(today)
+  const creationMonday = getMondayOf(createdAt)
 
   let weekStart = new Date(currentMonday)
   weekStart.setUTCDate(weekStart.getUTCDate() - 7) // start from last week
 
-  while (true) {
+  // Stop once we reach weeks that entirely predate the habit's creation —
+  // running out of history to consider isn't the same as failing a week, so
+  // this doesn't break the streak, it just ends the walk. (The creation
+  // week itself is still evaluated against the full target — not prorated
+  // for however many days of it the habit actually existed for.)
+  while (weekStart >= creationMonday) {
     const key = weekStart.toISOString()
     const count = weekMap[key] || 0
 
@@ -77,18 +83,23 @@ async function getHabits(userId, localDate) {
 
     // Build a Set of ISO date strings for quick lookup: is day X done this week?
     const doneDates = new Set(weekLogs.map((l) => normalizeDate(l.date).toISOString()))
+    const createdDate = normalizeDate(habit.createdAt)
 
     // Build the 7-day grid — one entry per day Mon–Sun
     const weekGrid = Array.from({ length: 7 }, (_, i) => {
       const day = new Date(weekMonday)
       day.setUTCDate(weekMonday.getUTCDate() + i)
+      const normalizedDay = normalizeDate(day)
       return {
-        date: normalizeDate(day).toISOString(),
-        done: doneDates.has(normalizeDate(day).toISOString()),
+        date: normalizedDay.toISOString(),
+        done: doneDates.has(normalizedDay.toISOString()),
+        // The habit didn't exist yet on this day — the frontend greys these
+        // out and disables toggling instead of showing them as "missed".
+        beforeCreation: normalizedDay < createdDate,
       }
     })
 
-    const streak = calculateStreak(habitLogs, habit.targetFrequency, localDate)
+    const streak = calculateStreak(habitLogs, habit.targetFrequency, localDate, habit.createdAt)
 
     return { ...habit.toObject(), weekGrid, streak }
   })

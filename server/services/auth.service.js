@@ -17,6 +17,20 @@ async function signup(name, email, password) {
     throw err
   }
 
+  // MAX_USERS is unset in dev/test (Number(undefined) is NaN, so `> 0` is
+  // false and this is skipped entirely) — only enforced when explicitly
+  // configured, e.g. on a public deploy meant for a small, known group.
+  const maxUsers = Number(process.env.MAX_USERS)
+  if (maxUsers > 0) {
+    const userCount = await User.countDocuments()
+    if (userCount >= maxUsers) {
+      const err = new Error('Signups are currently closed')
+      err.code = 'SIGNUPS_CLOSED'
+      err.status = 403
+      throw err
+    }
+  }
+
   const passwordHash = await bcrypt.hash(password, 10)
   const user = await User.create({ name, email, passwordHash })
   const token = signToken(user._id)

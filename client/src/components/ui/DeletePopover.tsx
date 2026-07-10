@@ -2,7 +2,8 @@ import { useEffect, useRef } from 'react'
 
 interface DeletePopoverProps {
   title: string
-  itemName: string
+  /** Omit for items whose name could be arbitrarily long (e.g. task titles) — falls back to a generic confirmation instead of interpolating it. */
+  itemName?: string
   onConfirm: () => void
   onCancel: () => void
 }
@@ -36,8 +37,14 @@ function DeletePopover({ title, itemName, onConfirm, onCancel }: DeletePopoverPr
       </div>
       <div className="border-t border-slate-100 dark:border-slate-800 px-4 py-3">
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          Are you sure you want to delete{' '}
-          <span className="font-medium text-slate-700 dark:text-slate-300">"{itemName}"</span>?
+          {itemName ? (
+            <>
+              Are you sure you want to delete{' '}
+              <span className="font-medium text-slate-700 dark:text-slate-300">"{itemName}"</span>?
+            </>
+          ) : (
+            'Are you sure you want to delete this?'
+          )}
         </p>
       </div>
       <div className="border-t border-slate-100 dark:border-slate-800 px-4 py-2.5 flex justify-end gap-2">

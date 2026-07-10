@@ -10,5 +10,6 @@ router.get('/today', reflectionsController.getToday)
 router.put('/today', reflectionsController.upsertToday)
 router.get('/', reflectionsController.getAll)
 router.get('/:id', reflectionsController.getById)
+router.delete('/:id', reflectionsController.deleteReflection)
 
 module.exports = router
