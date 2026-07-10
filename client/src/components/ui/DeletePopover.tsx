@@ -6,9 +6,11 @@ interface DeletePopoverProps {
   itemName?: string
   onConfirm: () => void
   onCancel: () => void
+  /** Which side of the trigger to open on. Default 'top' fits list rows; use 'bottom' when the trigger sits near the top of its container (e.g. a modal header) so the popover doesn't get clipped. */
+  placement?: 'top' | 'bottom'
 }
 
-function DeletePopover({ title, itemName, onConfirm, onCancel }: DeletePopoverProps) {
+function DeletePopover({ title, itemName, onConfirm, onCancel, placement = 'top' }: DeletePopoverProps) {
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -30,7 +32,9 @@ function DeletePopover({ title, itemName, onConfirm, onCancel }: DeletePopoverPr
   return (
     <div
       ref={ref}
-      className="absolute bottom-full right-0 mb-2 z-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg w-56"
+      className={`absolute right-0 z-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg w-56 ${
+        placement === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'
+      }`}
     >
       <div className="px-4 py-3">
         <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</p>

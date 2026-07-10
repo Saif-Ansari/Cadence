@@ -380,7 +380,7 @@ function ReflectionsPage() {
       {/* Entry detail modal */}
       <Modal open={detailReflection !== null} onClose={() => setDetailReflection(null)} size='xl'>
         {detailReflection && (
-          <div className='max-h-[85vh] flex flex-col'>
+          <div className='min-h-[320px] max-h-[85vh] flex flex-col'>
 
             {/* Header */}
             <div className='flex items-start justify-between p-6 pb-5 border-b border-slate-100 dark:border-slate-800'>
@@ -411,6 +411,7 @@ function ReflectionsPage() {
                       itemName={formatDate(detailReflection.date)}
                       onConfirm={() => deleteReflection.mutate(detailReflection._id)}
                       onCancel={() => setConfirmDeleteReflection(false)}
+                      placement='bottom'
                     />
                   )}
                 </div>
