@@ -32,7 +32,7 @@ Existing apps solve one of these in isolation. Cadence ties all three together �
 | Mobile & tablet responsive | ✅ Done |
 | Tests — backend integration + frontend unit | ✅ Done |
 | Pre-deploy hardening — security, error handling, timezone-safe dates, dark mode | ✅ Done |
-| Deploy | ⏳ Next |
+| Deploy | ⏳ In progress (Vercel account ready; Railway + MongoDB Atlas next) |
 
 ---
 
@@ -41,10 +41,10 @@ Existing apps solve one of these in isolation. Cadence ties all three together �
 ### Phase 1
 
 - **Dashboard** — daily snapshot: login streak, active goals with progress bars, today's tasks (inline create/delete), habit weekly grid
-- **Goals** — create goals with a deadline; break each goal into **Steps** (binary progress checklist); progress = done steps / total steps; status auto-computed as On Track / At Risk / Overdue / Completed
-- **Habits** — create habits with a weekly frequency target; mark each day done/not done; weekly streak; 5-week consistency heatmap
+- **Goals** — create goals with a deadline; break each goal into **Steps** (binary progress checklist); progress = done steps / total steps; status auto-computed as On Track / At Risk / Overdue / Completed; deletion is blocked while any step is still incomplete
+- **Habits** — create habits with a weekly frequency target; mark each day done/not done; weekly streak; 5-week consistency heatmap; days before a habit was created are excluded rather than counted as missed
 - **Tasks** — standalone daily todos; created inline on the Dashboard; automatically cleaned from the DB the next day
-- **Reflections** — end-of-day form: overall day, accomplishments, win of the day, time wasters, improvements, focus score (1–10); recent history panel; full history modal; read-only entry detail view
+- **Reflections** — end-of-day form: overall day, accomplishments, win of the day, time wasters, improvements, focus score (1–10); recent history panel; full history modal; read-only entry detail view; delete any entry
 - **Settings** — change password; light/dark theme toggle (persisted, applied via Tailwind `dark:` variants)
 - **Auto check-in** — logging in marks the day and increments your streak; no manual button needed
 - **Motivational quotes** — a brief, powerful quote on the dashboard and auth screens

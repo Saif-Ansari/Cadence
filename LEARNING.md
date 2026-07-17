@@ -911,16 +911,66 @@ still drift from the user's actual day.
 
 ---
 
-## 16. What's Next
+## 17. Mongoose `timestamps: true` Protects `createdAt` From Updates
+
+Adding `{ timestamps: true }` to a schema (used on `Habit`, `Goal`, etc.) gives you `createdAt` and
+`updatedAt` fields that Mongoose manages automatically — set once, on creation, then left alone.
+"Left alone" is stronger than it sounds: Mongoose actively **strips `createdAt` out of any update
+you send**, even if you explicitly include it:
+
+```js
+await Habit.findByIdAndUpdate(habitId, { createdAt: new Date('2026-03-18') })
+// createdAt is silently unchanged — Mongoose drops it from the update payload
+```
+
+This came up writing a test for the habit-fairness fix (§ below on excluding pre-creation days):
+the test needed a habit whose `createdAt` was a specific date in the past, but the API has no way
+to set that (it's server-controlled, correctly), and neither does `findByIdAndUpdate`. The fix is
+to reach past Mongoose entirely and hit the native MongoDB driver, which has no opinion about
+`timestamps`:
+
+```js
+await Habit.collection.updateOne({ _id: habitDoc._id }, { $set: { createdAt: new Date(...) } })
+```
+
+`Model.collection` is the raw driver collection Mongoose wraps — going through it bypasses schema
+validation, casting, and hooks entirely, which is exactly why it's the right tool for "I need to
+force data into a state the application layer will never legitimately produce," and exactly why
+you'd never use it for real application code (you'd lose all the validation Mongoose exists to give
+you).
+
+---
+
+## 18. Habit Fairness — Don't Penalize Days/Weeks Before a Habit Existed
+
+A habit created on a Thursday still shows Monday–Wednesday in that week's grid (the grid is always
+Mon–Sun) — those days need to read as "didn't apply yet," not "missed." Two places needed a fix:
+
+**Display (`weekGrid`):** each day now carries a `beforeCreation` flag
+(`normalizedDay < normalizeDate(habit.createdAt)`), and the frontend renders those as greyed-out,
+non-toggleable circles instead of failed attempts.
+
+**Streak calculation:** `calculateStreak` walks backward week-by-week, requiring the target
+frequency be met each week, breaking on the first week that falls short. Before this fix, a week
+before the habit existed would naturally break the loop too (an empty week never meets a
+target > 0) — so in the common case the *number* doesn't change. But the fix is still real defense,
+not a no-op: it also stops the loop from *ever considering* data logged for a date before creation,
+regardless of why that data exists (a bug elsewhere, direct API misuse, anything). Proving this
+needed a test that fabricates exactly that scenario — a log dated before the habit's `createdAt`
+with enough entries to meet target — and confirms the streak doesn't count it. Without a test like
+that, "this fixes a bug" and "this changes nothing" are indistinguishable by just reading the
+`while` condition once.
+
+---
+
+## 19. What's Next
 
 ```
-Backend: ✅ all Phase 1 routes + a pre-deploy hardening pass (2026-07-07)
-Frontend: ✅ all Phase 1 screens + a visual/resilience pass (2026-07-07/08)
-  ├── loading/error states (QueryState), global toast, shared Modal
-  ├── dark mode, Inter font, dashboard stat strip, daily quote
-  └── skeleton loaders
+Backend: ✅ all Phase 1 routes + a pre-deploy hardening pass + bug fixes from live use (2026-07-11)
+Frontend: ✅ all Phase 1 screens + a visual/resilience pass + bug fixes from live use (2026-07-11)
 
-Remaining: Deploy — Vercel (frontend) + Railway (backend) + MongoDB Atlas
+Remaining: Deploy — Vercel (frontend, account ready) + Railway (backend) + MongoDB Atlas.
+In progress: Atlas cluster and Railway account not yet created.
 ```
 
 ---

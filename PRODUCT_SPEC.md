@@ -121,6 +121,7 @@ A habit is a recurring behaviour the user wants to build into their life. The go
 - Each week, the user marks each day as **done** or **not done**
 - A simple weekly grid: Mon Tue Wed Thu Fri Sat Sun — tap to mark
 - No time pressure — the user can log a past day within the same week
+- Days before the habit was created are shown greyed out and can't be toggled — the habit didn't exist yet, so those days are excluded rather than counted as missed. The same applies to the streak calculation: it doesn't require a week that predates the habit's creation.
 
 #### Habit metrics
 
@@ -143,6 +144,8 @@ A habit is a recurring behaviour the user wants to build into their life. The go
 
 A goal is a meaningful objective with a defined outcome and a deadline. Think of it as a project.
 
+**Revised from the original design:** goals break down into **Steps**, not linked Tasks. Steps are a binary progress checklist that belongs to exactly one goal. Tasks (4.4) are a separate, fully standalone concept with no relationship to goals in v1 — the "linked task" idea below was superseded before Steps shipped. See CLAUDE.md's "Architecture decision: Goal → Steps, Tasks separate."
+
 **Examples:**
 - "Learn backend development" — deadline: 3 months
 - "Earn $100,000" — deadline: end of year
@@ -155,13 +158,13 @@ A goal is a meaningful objective with a defined outcome and a deadline. Think of
 | Title | Text | e.g. "Learn backend development" |
 | Description | Text (optional) | More context on what this means |
 | Deadline | Date | When the goal should be completed by |
-| Tasks | List (optional) | Tasks can be added in the same modal — the goal is created first, then each task is created with the returned goalId |
+| Steps | List (optional) | Steps can be added in the same modal — the goal is created first, then each step is created with the returned goalId |
 
 #### Progress
 
-A goal's progress is calculated from its linked tasks: `completed tasks ÷ total tasks linked to the goal`.
+A goal's progress is calculated from its steps: `completed steps ÷ total steps on the goal`.
 
-Goals with no tasks show 0% until tasks are added. Goals can be manually marked complete regardless of task progress.
+Goals with no steps show 0% until steps are added. Goals can be manually marked complete regardless of step progress.
 
 #### Goal states
 
@@ -171,6 +174,10 @@ Goals with no tasks show 0% until tasks are added. Goals can be manually marked 
 | Completed | User manually marks it done |
 | Overdue | Deadline has passed and goal is not completed |
 
+#### Deleting a goal
+
+A goal can only be deleted once every step on it is done (or it has none). Deletion is blocked while any step is still incomplete — this prevents "delete goal" from being used as a shortcut to silently discard in-progress work; the user has to either finish or explicitly remove the pending steps first. Deleting an eligible goal cascades to delete its steps.
+
 #### Notes on habits and goals
 
 Habits and goals are independent. A user may have a habit of "reading 30 minutes daily" and a goal of "finish 5 books" — they are related conceptually but not technically linked in version 1.
@@ -179,22 +186,20 @@ Habits and goals are independent. A user may have a habit of "reading 30 minutes
 
 ### 4.4 Tasks
 
-A task is a discrete, completable action. Tasks can exist on their own or be linked to a goal — neither is required.
+A task is a discrete, completable action, entirely standalone — no link to a goal exists in v1 (see the note in 4.3).
 
 #### Creating a task
 
 | Field | Type | Notes |
 |---|---|---|
 | Title | Text | e.g. "Set up FastAPI project" |
-| Linked goal | Goal (optional) | Associates the task with a goal for context |
 | Due date | Date (optional) | When it should be done |
 
 #### Behaviour
 
 - Tasks appear in the "TODAY" panel on the dashboard when they are due today or have no due date
 - Marking a task complete removes it from the today view
-- Tasks linked to a goal show under that goal on the Goals screen as well
-- No task is required to be part of a goal — standalone tasks are first-class
+- Deleting a task shows a generic confirmation ("Are you sure you want to delete this task?") rather than repeating the task's title — titles can be arbitrarily long, so the confirmation popover doesn't try to render them
 
 #### Task states
 
@@ -244,6 +249,10 @@ Reflections is an optional end-of-day form the user fills in to look back on the
 
 - Optional — not required every day
 - One entry per calendar day (edit if already filled in that day)
+- The main form is always bound to the current calendar day — it's never possible to edit a past day's entry through it, even if a browser tab is left open across midnight (the save action always resolves "today" fresh, at the moment it's sent, not whatever day the form happened to be displaying)
+- Past entries are view-only — opening one from the history list shows its fields as plain text, not editable inputs
+- A user can delete any reflection, past or current day's
+- When a new calendar day begins with no entry yet, the form resets to blank rather than continuing to show the previous day's content
 - All fields are optional within the form — fill in whatever is relevant that day
 - A list of all past reflections is shown alongside the form, most recent first
 - Each entry in the list shows the date and a preview of the day summary
@@ -347,26 +356,28 @@ What the system must be able to do in Phase 1.
 - The system must automatically record a check-in on the user's first login of each calendar day
 
 ### Goals
+**Revised (see CLAUDE.md's "Architecture decision: Goal → Steps, Tasks separate"):** goals break down into **Steps** (a binary progress checklist), not linked Tasks. Tasks are a separate, standalone concept (see below) with no goal relationship in v1.
 - A user must be able to create a goal with a title, optional description, and deadline
-- A user must be able to add tasks to a goal from the same creation modal (goal created first, tasks use the returned goalId)
-- Goal progress must be calculated automatically: completed tasks ÷ total tasks linked to the goal
-- A goal with no tasks shows 0% and can be manually marked complete
+- A user must be able to add steps to a goal from the same creation modal (goal created first, steps use the returned goalId)
+- Goal progress must be calculated automatically: completed steps ÷ total steps linked to the goal
+- A goal with no steps shows 0% and can be manually marked complete
 - A user must be able to view goals filtered by status: All, On Track, At Risk, Completed
-- A user must be able to edit and delete a goal
-- Deleting a goal also deletes all tasks linked to it
+- A user must be able to edit a goal
+- A user must be able to delete a goal, **but only once every step on it is marked done (or it has no steps)** — deletion is blocked while any step remains incomplete, so it can't be used as a shortcut to silently discard in-progress work. Deleting an eligible goal also deletes all its steps.
 
 ### Habits
 - A user must be able to create a habit with a name, target frequency (days per week), and optional description
 - A user must be able to mark any day of the current week as done or not done for a habit
 - A user must be able to mark a past day within the same week
 - The system must track the habit streak: consecutive weeks where the user met the target frequency
+- Days before a habit's creation date must not count as "missed" — the weekly grid marks them as not-applicable (not toggleable), and streak calculation doesn't require weeks that predate the habit's existence
 - A user must be able to mark a habit as completed when it no longer needs tracking
 
 ### Tasks
-- A user must be able to create a task with a title, optional due date, and optional link to a goal
+**Revised:** Tasks have no goal link in v1 (this document previously described an optional goal link — see the Architecture decision note above).
+- A user must be able to create a standalone task with a title and optional due date
 - A user must be able to mark a task as done
 - Tasks due today, or with no due date, must appear in the dashboard's today view
-- Tasks linked to a goal must also appear on that goal's detail view
 - A user must be able to edit and delete a task
 
 ### Check-in (Auto)
@@ -376,10 +387,11 @@ What the system must be able to do in Phase 1.
 
 ### Reflections
 - A user must be able to create one reflection per calendar day
-- A user must be able to edit that day's reflection if submitted earlier in the day
+- A user must be able to edit that day's reflection if submitted earlier in the day (past days are view-only, not editable — see 4.6 detail below)
 - The reflection form must include: day summary, accomplishments, win of the day, time wasters, what can be improved, focus score (1–10)
 - All fields must be optional — partial submissions are valid
 - A user must be able to view a list of all past reflections, most recent first
+- A user must be able to delete any reflection (today's or a past entry)
 
 ### Dashboard
 - The dashboard must show the user's current login streak in the greeting header
@@ -456,7 +468,7 @@ To be defined once Phase 2 is complete and the app is being used daily.
 | Habit pause — should it come in Phase 1 or Phase 2? | Saif | Medium |
 | Streak pause — what are the restrictions? (max pauses/month, requires reason, etc.) | Saif | Phase 2 |
 
-*Resolved: Focus score is manually input 1–10 via Reflections (not calculated). Check-in is auto on login (no button). Time wasters are free-text in Reflections in Phase 1, structured feature in Phase 2. Tasks are standalone or optionally linked to a goal. Metrics and Focus Score widget are Phase 2.*
+*Resolved: Focus score is manually input 1–10 via Reflections (not calculated). Check-in is auto on login (no button). Time wasters are free-text in Reflections in Phase 1, structured feature in Phase 2. Tasks are fully standalone — the goal-link idea was superseded by Steps, see 4.3/4.4. Metrics and Focus Score widget are Phase 2. Reflections can be deleted (resolved 2026-07-11 — not an open question anymore, just wasn't stated explicitly before).*
 
 ---
 

@@ -1,85 +1,69 @@
 # Session Notes
 
-## Last session — 2026-07-08
+## Last session — 2026-07-11
 
-### What's done
-A full code review (backend + frontend + visual/UX) was run before deploying, and the
-punch list from it is complete:
+### What's done since 2026-07-08
+All committed (`7b43ce2`, `467dabd`, and the doc-sync pass this covers). Backend at 49 tests
+(7 suites), frontend at 22 (5 files), `tsc` clean, all green.
 
-- **Pre-deploy blockers** — CORS made env-driven (`CORS_ORIGINS`), `JWT_SECRET` fail-fast at
-  boot, helmet + rate limiting on `/api/auth`, NoSQL-injection guard on auth inputs, and a
-  timezone fix (`server/utils/dateOnly.js`, `client/src/lib/date.ts` — see LEARNING.md §15)
-- **Resilience pass** — centralized error middleware (`server/middleware/errorHandler.js`,
-  see LEARNING.md §12), `runValidators: true` everywhere it was missing (§13), `<QueryState>`
-  loading/error handling on every page, a global toast system for mutation failures
-- **Visual pass** — Inter font, a rotating daily quote (Dashboard + Auth), a dashboard stat
-  strip, skeleton loaders, and a shared `<Modal>` (wraps `@radix-ui/react-dialog`) replacing
-  7 hand-rolled modals — fixes focus trapping/Escape/scroll-lock in one place
-- **Dark mode** — implemented for real (Tailwind v4 `@custom-variant dark`, toggle in
-  `client/src/lib/theme.ts`), ahead of its original IMPLEMENTATION_PLAN.md slot
-- **Docs synced** — CLAUDE.md, PRODUCT_SPEC.md, README.md, IMPLEMENTATION_PLAN.md, and
-  LEARNING.md all updated to match what's actually built
-- **Modal centering bug fixed** — user caught a real bug live-testing: the shared `<Modal>`
-  visibly jumped from an off-center position to centered right after opening. Root cause:
-  centering via `-translate-x-1/2 -translate-y-1/2` shared the `transform` property with the
-  open animation's `scale()` keyframe, and Tailwind's CSS-variable transform composition lost
-  the race. Fixed by switching to `inset-0 m-auto` centering (no `transform` involved at all),
-  so the animation is now the only thing that ever touches `transform`.
-- **Test coverage caught up with everything above** — backend went from 24 → 41 tests (7
-  suites): new `habits.test.js` (there was previously zero coverage of habits despite it
-  getting the session's biggest backend rewrite), `dateOnly.test.js`, `rateLimiter.test.js`,
-  plus NoSQL-injection-guard tests on login (only signup had one) and a `localDate`
-  day-boundary integration test on reflections. Frontend went from 7 → 22 tests (1 → 5 files):
-  new tests for `habitStats`, `quotes`, `date`, `theme` — the four pure-logic files added this
-  session that had no coverage. Also found and fixed a real latent bug while doing this: the
-  new `/api/auth` rate limiter (max 20/15min) had no test-environment exemption, and
-  `auth.test.js` was already making 17 requests per run — one or two more tests would have
-  started intermittently failing with 429s. Now skipped when `NODE_ENV==='test'` (Jest sets
-  this automatically), with a dedicated test that verifies the real limiting behavior still works.
+- **Five fixes/rules found from actually using the app** (user tested live, not requested
+  speculatively):
+  - **Goals** — deleting a goal is now blocked (`409 INCOMPLETE_STEPS`) while any step is
+    undone. Delete button in `GoalsPage` disabled with a tooltip, same pattern as "mark complete"
+  - **Habits** — days before a habit's `createdAt` are flagged (`weekGrid[].beforeCreation`),
+    greyed out and non-toggleable instead of reading as missed; streak calc stops at the
+    creation week instead of requiring weeks that predate the habit (see LEARNING.md §17-18 for
+    the Mongoose `timestamps` gotcha hit while testing this)
+  - **Tasks** — delete confirmation no longer shows the task title (could be arbitrarily long) —
+    `DeletePopover`'s `itemName` is now optional, generic "delete this?" when omitted
+  - **Reflections** — added `DELETE /api/reflections/:id` + a delete button in the Entry Detail
+    modal header; fixed the pre-fill effect that only ever populated fields and never cleared
+    them (a new day with no entry yet now correctly shows a blank form instead of yesterday's text)
+  - Confirmed via conversation, not code changes: past reflections were already view-only (no
+    input elements in the Entry Detail modal), and the main form was already always bound to the
+    *real* current day at save-time (not whatever day it displayed) — both already correct
+- **Two follow-up bugs from the reflection delete button**, both found live and fixed:
+  - `DeletePopover` always opens *above* its trigger (`bottom-full`) — fine for list rows, broken
+    for the reflection modal's header (too close to the top, got clipped by the modal's scroll
+    boundary). Added a `placement` prop (`'top' | 'bottom'`), reflection modal uses `'bottom'`
+  - With very little content, the Entry Detail modal shrank so small the downward-opening popover
+    had nowhere to sit properly — added `min-h-[320px]` to the modal body
+- **`.gitignore` hardened** across root/client/server — was only covering `.env`/`.env.local`;
+  missing Vite's other mode variants (`.env.production` etc. — the exact file needed for
+  `VITE_API_URL`), Vercel/Railway CLI local config, and defensive credential-file patterns.
+  Audited: nothing sensitive was ever actually tracked, just gaps in future-proofing
+- **`client/vercel.json` added** — SPA rewrite (`/(.*) → /index.html`). Needed because
+  `client/src/App.tsx` uses React Router client-side routes; without this, Vercel 404s on
+  direct navigation/refresh to anything but `/`
+- **Docs fully synced (this pass)** — beyond just documenting what's new, also fixed
+  longstanding drift in PRODUCT_SPEC.md that predated this session: it still described goal
+  progress via linked Tasks (`completed tasks ÷ total tasks`) and Tasks as optionally
+  goal-linked — neither matches reality since the Steps pivot (documented in CLAUDE.md, never
+  back-ported to PRODUCT_SPEC.md until now). CLAUDE.md, README.md, IMPLEMENTATION_PLAN.md, and
+  LEARNING.md also updated.
 
-### Verification note
-No browser tooling was available in this sandbox (no `chromium-cli`, `playwright install`
-timed out downloading Chromium). Verified instead via: `tsc --noEmit` + full test suites after
-every change, and running both dev servers for real, driving them through the actual Vite
-proxy with `curl` (signup/login/streak flow, CastError → clean 400, out-of-range focusScore →
-400, etc.). User confirmed 2026-07-08 by checking dark mode in a real browser — works fine.
-
-### Known gaps (not addressed this session, intentionally out of scope)
+### Known gaps (still intentionally out of scope)
 - `PATCH /api/users/email` — email change is not built (PRODUCT_SPEC.md lists it; not implemented)
 - Google OAuth — not built (deferred per IMPLEMENTATION_PLAN.md notes)
 - Dedicated input-validation library (zod/express-validator) — still ad-hoc per-controller checks
 - Request logging (morgan) — not added
-- PRODUCT_SPEC.md still describes goal progress via linked Tasks in a couple of places, even
-  though the app pivoted to Steps (documented in CLAUDE.md) — worth a cleanup pass
+- No loading indicator on the main Reflections form's own query (only the history side panel has
+  one) — offered to add, user hasn't asked for it yet
 
-### Deploy prep started 2026-07-08 (user has Vercel, still needs Railway + MongoDB Atlas)
-Testing locally first, before touching hosting accounts. Two real deploy blockers found and
-fixed in the process:
-- **Cross-domain API calls** — `client/src/lib/api.ts`'s `BASE_URL` was hardcoded to `/api`,
-  which only worked because Vite's dev proxy forwards it to `localhost:5000`. In production,
-  Vercel (frontend) and Railway (backend) are different domains, so this would have silently
-  broken every API call. Fixed: `BASE_URL = import.meta.env.VITE_API_URL || '/api'` — set
-  `VITE_API_URL` in Vercel's dashboard once the Railway URL is known (see `client/.env.example`).
-  Also mirrored the proxy under Vite's `preview` config so `npm run build && npm run preview`
-  sanity-checks the real production bundle locally — verified end-to-end, works.
-- **Signup cap** — added `MAX_USERS` env var (unset = unlimited, so dev/test unaffected).
-  `POST /api/auth/signup` returns `403 SIGNUPS_CLOSED` once `User.countDocuments() >= MAX_USERS`.
-  User settled on **20** as the starting value for the actual deploy. Not tied to a specific
-  hosting quota (Atlas free tier is storage-capped at 512MB, not user-count-capped) — just a
-  safety net against an open public signup form. Verified live against the real local DB.
-- Backend now at 43 tests, frontend still 22 (the two fixes above added 2 backend tests, one of
-  which caught a real bug in its own cleanup logic: `process.env.X = undefined` coerces to the
-  *string* `"undefined"` instead of unsetting the var — fixed with `delete process.env.X` instead).
-- Local dev MongoDB (`mongodb://localhost:27017/habittracker`) had accumulated 6 test accounts
-  from verification `curl` calls during this session (`verify-`, `toast-verify-`, `stat-verify-`,
-  `modal-verify-`, `dark-verify-`, `prod-verify-` email prefixes) — user asked for them deleted,
-  done (including cascade-cleanup of their goals/habits/tasks/reflections/checkins). User's own
-  `saif@example.com` and `test@example.com` accounts were left untouched.
+### Deploy — in progress
+User has a Vercel account; Railway + MongoDB Atlas accounts not yet created. Agreed sequence
+(avoids setting any env var twice, since Railway's `CORS_ORIGINS` needs the Vercel URL and
+Vercel's `VITE_API_URL` needs the Railway URL):
+1. MongoDB Atlas — free M0 cluster, DB user, Network Access `0.0.0.0/0`, get connection string
+2. Vercel — import repo, **Root Directory = `client`**, deploy without `VITE_API_URL` yet, note URL
+3. Railway — import repo, **Root Directory = `server`**, set `MONGO_URI`/`JWT_SECRET`/
+   `CORS_ORIGINS` (Vercel URL)/`MAX_USERS=20`, deploy, note URL
+4. Back to Vercel — set `VITE_API_URL` = `<railway-url>/api`, redeploy
+5. Verify end-to-end in production; update README with the live URL
 
-### Next session
-1. Deploy — Vercel (frontend, already has an account) + Railway (backend, needs account) +
-   MongoDB Atlas (needs account) — IMPLEMENTATION_PLAN.md Weekend 13 checklist. Remember to set
-   `VITE_API_URL` (Vercel), and `MONGO_URI`/`JWT_SECRET`/`CORS_ORIGINS`/`MAX_USERS=20` (Railway).
+None of steps 1-5 have started yet — next session should begin here. I can't drive any of these
+dashboards directly (no account access) — my role is checking code/config as things come up and
+keeping the sequence straight, not clicking through the UIs myself.
 
 ### How to resume
 Start with: **"continue from SESSION.md"**

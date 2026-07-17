@@ -278,13 +278,22 @@ Frontend:
 - [ ] Google OAuth button (wired up — backend Passport.js strategy) — not done
 
 #### Weekend 13 — Sep 13–14
-**Deploy**
-- [ ] Choose hosting: Railway or Render for backend, Vercel for frontend
-- [ ] Set environment variables (`MONGO_URI`, `JWT_SECRET`, `GOOGLE_CLIENT_ID/SECRET`)
-- [ ] Configure CORS for production domain
-- [ ] MongoDB Atlas — production cluster
-- [ ] Deploy backend, deploy frontend, verify end-to-end in production
-- [ ] Update README with live URL
+**Deploy** — in progress as of 2026-07-11. Chosen hosts: Vercel (frontend, account already exists) +
+Railway (backend) + MongoDB Atlas. `GOOGLE_CLIENT_ID/SECRET` dropped from this checklist — no
+Google OAuth was ever built, see the Notes section below.
+
+Order matters here — this sequence avoids setting anything twice, since Railway's `CORS_ORIGINS`
+needs the Vercel URL and Vercel's `VITE_API_URL` needs the Railway URL:
+- [ ] MongoDB Atlas — free M0 cluster, DB user, Network Access set to `0.0.0.0/0` (Railway has no
+      static IP to whitelist), copy the `mongodb+srv://...` connection string
+- [ ] Vercel — import the repo, **Root Directory = `client`** (monorepo — this is the setting that
+      actually matters), deploy without `VITE_API_URL` yet, note the resulting URL
+- [ ] Railway — import the repo, **Root Directory = `server`**, set `MONGO_URI` (from Atlas),
+      `JWT_SECRET` (generate, don't reuse dev's), `CORS_ORIGINS` (the Vercel URL above), `MAX_USERS=20`,
+      deploy, note the resulting URL
+- [ ] Back to Vercel — set `VITE_API_URL` = `<railway-url>/api`, redeploy
+- [ ] Verify end-to-end in production (signup, login, create a goal/habit/reflection)
+- [ ] Update README with the live URL
 
 ---
 
