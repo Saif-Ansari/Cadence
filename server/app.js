@@ -32,11 +32,6 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' })
 })
 
-// TEMPORARY — debugging a CORS_ORIGINS mismatch in production. Remove once resolved.
-app.get('/api/debug-cors', (req, res) => {
-  res.json({ raw: process.env.CORS_ORIGINS ?? null, parsed: allowedOrigins })
-})
-
 // bcrypt.compare is intentionally slow, which makes /api/auth/login a cheap
 // CPU-exhaustion target as well as a brute-forceable endpoint — cap attempts
 // per IP instead of letting requests through at full speed.
