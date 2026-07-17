@@ -1,6 +1,53 @@
 # Session Notes
 
-## Last session — 2026-07-11
+## Last session — 2026-07-18
+
+### Deploy — done. Live at https://cadence-tau-self.vercel.app
+Backend: `https://cadence-7sy1.onrender.com` (Render, not Railway — switched mid-deploy since
+Railway's free tier is trial-credit-only now; Render's zero-config GitHub-import flow was a
+near-identical swap). Database: MongoDB Atlas, cluster in Mumbai (ap-south-1); Render region
+set to Singapore to keep backend↔DB latency down (picking a US region would have added a
+real, needless round-trip for every query).
+
+**Real bugs hit during this deploy, in the order found:**
+1. `VITE_API_URL` needs an explicit Vercel **redeploy** to bake into the built bundle — setting
+   the env var alone doesn't retroactively apply to an already-built deployment.
+2. A stale browser-cached JS bundle briefly kept calling the *Vercel* domain instead of the
+   Render backend after the above was fixed — surfaced as a confusing `405 Method Not Allowed`
+   (Vercel's SPA rewrite serves `index.html` for any unmatched path, including `/api/*`, and
+   static files only accept GET/HEAD). Fixed by a hard refresh — not a real bug, just cache.
+3. `CORS_ORIGINS` with a trailing slash never matches a browser's `Origin` header (browsers
+   never send one) — silent CORS failure, `Access-Control-Allow-Origin` missing from the
+   preflight response.
+4. The actual root cause, once the trailing slash was fixed and it *still* failed: the Render
+   env var was literally misnamed `CORS_ORIGIN` (missing the trailing `S`) — so
+   `process.env.CORS_ORIGINS` was `undefined` the whole time and the code was silently using its
+   `localhost` fallback. Confirmed via a temporary `/api/debug-cors` endpoint (added, curl'd
+   directly to see the exact raw value, then removed and committed — see `git log`) rather than
+   continuing to guess from dashboard screenshots back and forth.
+
+**Two credential exposures happened this session, both from pasting real values into chat/
+screenshots — not code bugs, just a reminder for next time to route secrets straight into the
+hosting dashboard and never through the conversation:**
+- MongoDB Atlas DB user password — exposed twice, rotated (final rotation used to build the
+  live `MONGO_URI`)
+- `JWT_SECRET` — visible in a Render dashboard screenshot, rotated afterward (this logs out any
+  existing sessions, which was fine — no real users yet)
+
+Final security sweep done at the end of this session: grepped both this repo and `../portfolio`
+for the literal exposed secret values and generic secret patterns across every tracked file —
+clean. Only `.env.example` files (placeholders, no real values) are tracked; the real `.env`
+files remain correctly gitignored.
+
+**Also done:** added the live URL (`https://cadence-tau-self.vercel.app`) to the Cadence entry
+in `../portfolio/src/components/Projects.jsx` (`link` field — it already had `github`, was
+missing `link`, matching the pattern the other two portfolio projects use). Verified the
+portfolio site still builds. That change is in a different git repo — uncommitted as of this
+note, since it needs a separate decision about who commits it.
+
+---
+
+## Previous session — 2026-07-11
 
 ### What's done since 2026-07-08
 All committed (`7b43ce2`, `467dabd`, and the doc-sync pass this covers). Backend at 49 tests
@@ -50,20 +97,15 @@ All committed (`7b43ce2`, `467dabd`, and the doc-sync pass this covers). Backend
 - No loading indicator on the main Reflections form's own query (only the history side panel has
   one) — offered to add, user hasn't asked for it yet
 
-### Deploy — in progress
-User has a Vercel account; Railway + MongoDB Atlas accounts not yet created. Agreed sequence
-(avoids setting any env var twice, since Railway's `CORS_ORIGINS` needs the Vercel URL and
-Vercel's `VITE_API_URL` needs the Railway URL):
-1. MongoDB Atlas — free M0 cluster, DB user, Network Access `0.0.0.0/0`, get connection string
-2. Vercel — import repo, **Root Directory = `client`**, deploy without `VITE_API_URL` yet, note URL
-3. Railway — import repo, **Root Directory = `server`**, set `MONGO_URI`/`JWT_SECRET`/
-   `CORS_ORIGINS` (Vercel URL)/`MAX_USERS=20`, deploy, note URL
-4. Back to Vercel — set `VITE_API_URL` = `<railway-url>/api`, redeploy
-5. Verify end-to-end in production; update README with the live URL
+### Deploy plan (superseded — see the top of this file for what actually happened)
+The original plan below assumed Railway for the backend; the app ended up on Render instead.
+Kept here only as a historical note, not something to follow.
 
-None of steps 1-5 have started yet — next session should begin here. I can't drive any of these
-dashboards directly (no account access) — my role is checking code/config as things come up and
-keeping the sequence straight, not clicking through the UIs myself.
+### Next session
+No outstanding deploy work. Possible next steps: pick up one of the "Known gaps" above (email
+change, Google OAuth, dedicated validation library, request logging), or just keep using the
+live app and see what surfaces — most of this project's real fixes so far have come from
+actually using it, not from planning ahead.
 
 ### How to resume
 Start with: **"continue from SESSION.md"**

@@ -2,6 +2,8 @@
 
 > A full-stack MERN app for building consistency — track goals, habits, tasks, and daily reflections in one place.
 
+**Live:** [cadence-tau-self.vercel.app](https://cadence-tau-self.vercel.app) (frontend on Vercel, backend on Render, MongoDB Atlas)
+
 ---
 
 ## Why I built this
@@ -12,33 +14,7 @@ Existing apps solve one of these in isolation. Cadence ties all three together �
 
 ---
 
-## Status
-
-**Phase 1 complete.**
-
-| Module | Status |
-|---|---|
-| Project setup (MERN + Vite) | ✅ Done |
-| TypeScript (frontend) | ✅ Done |
-| Tailwind CSS | ✅ Done |
-| Auth — JWT, signup, login, streak | ✅ Done |
-| Goals — CRUD + Step-based progress | ✅ Done |
-| Steps — CRUD, cascade delete, description | ✅ Done |
-| Habits — CRUD + daily toggle + streak + consistency heatmap | ✅ Done |
-| Tasks — standalone daily todos, lazy DB cleanup | ✅ Done |
-| Dashboard — streak, goals summary, today's tasks, habits | ✅ Done |
-| Reflections — form, history panel, modals | ✅ Done |
-| Settings — change password + theme preference | ✅ Done |
-| Mobile & tablet responsive | ✅ Done |
-| Tests — backend integration + frontend unit | ✅ Done |
-| Pre-deploy hardening — security, error handling, timezone-safe dates, dark mode | ✅ Done |
-| Deploy | ⏳ In progress (Vercel account ready; Railway + MongoDB Atlas next) |
-
----
-
 ## Features
-
-### Phase 1
 
 - **Dashboard** — daily snapshot: login streak, active goals with progress bars, today's tasks (inline create/delete), habit weekly grid
 - **Goals** — create goals with a deadline; break each goal into **Steps** (binary progress checklist); progress = done steps / total steps; status auto-computed as On Track / At Risk / Overdue / Completed; deletion is blocked while any step is still incomplete
@@ -50,13 +26,12 @@ Existing apps solve one of these in isolation. Cadence ties all three together �
 - **Motivational quotes** — a brief, powerful quote on the dashboard and auth screens
 - **Mobile & tablet** — sidebar slides in as an overlay on small screens; all layouts stack responsively
 
-### Phase 2 (planned)
+### Planned (Phase 2)
 
 - Metrics screen — habit completion charts, goal progress, streak history, focus score trend
 - Tasks linked to Steps (three-level hierarchy: Goal → Step → Tasks)
 - Habit scheduling — specific days per habit
 - Forgot password flow (requires email service)
-- Deploy — Vercel (frontend) + Railway (backend) + MongoDB Atlas
 
 ---
 
@@ -92,7 +67,7 @@ cadence/
 ├── client/                  # React 18 + Vite (port 5173)
 │   └── src/
 │       ├── components/
-│       │   ├── ui/          # DeletePopover
+│       │   ├── ui/          # Modal, DeletePopover, QueryState, Skeleton, ToastStack
 │       │   └── layout/      # Sidebar, ProtectedLayout, UserMenu
 │       ├── pages/           # AuthPage, DashboardPage, GoalsPage,
 │       │                    # HabitsPage, ReflectionsPage, SettingsPage
@@ -146,10 +121,10 @@ Server runs at `http://localhost:5000`
 ### Running tests
 
 ```bash
-# Backend integration tests (auth, goals, reflections)
+# Backend integration tests (auth, goals, habits, reflections, error handling, rate limiting)
 cd server && npm test
 
-# Frontend unit tests (goalStatus utilities)
+# Frontend unit tests (shared utilities: goalStatus, habitStats, date, theme, quotes)
 cd client && npm test
 ```
 
@@ -208,6 +183,7 @@ All routes except `/api/auth/signup` and `/api/auth/login` require `Authorizatio
 | PUT | `/api/reflections/today` | Upsert today's reflection |
 | GET | `/api/reflections` | All reflections, newest first |
 | GET | `/api/reflections/:id` | Single reflection by id |
+| DELETE | `/api/reflections/:id` | Delete a reflection |
 
 ---
 
