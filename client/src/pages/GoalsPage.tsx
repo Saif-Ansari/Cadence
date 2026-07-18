@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Pencil, CheckCircle, Trash2, Check } from 'lucide-react'
+import { Pencil, CheckCircle, Trash2, Check, ChevronDown, ChevronUp } from 'lucide-react'
 import DeletePopover from '../components/ui/DeletePopover'
 import QueryState from '../components/ui/QueryState'
 import Skeleton from '../components/ui/Skeleton'
@@ -62,6 +62,16 @@ function GoalsPage() {
   const [addingStepGoalId, setAddingStepGoalId] = useState<string | null>(null)
   const [newStepTitle, setNewStepTitle] = useState('')
   const [newStepDescription, setNewStepDescription] = useState('')
+  const [expandedGoalIds, setExpandedGoalIds] = useState<Set<string>>(new Set())
+
+  function toggleGoalSteps(goalId: string) {
+    setExpandedGoalIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(goalId)) next.delete(goalId)
+      else next.add(goalId)
+      return next
+    })
+  }
 
   function openAddStep(goalId: string) {
     setAddingStepGoalId(goalId)
@@ -288,6 +298,8 @@ function GoalsPage() {
             const status = computeGoalStatus(goal)
             const pendingSteps = goal.steps.filter((s) => !s.done).length
             const allStepsDone = pendingSteps === 0
+            const doneStepsCount = goal.steps.length - pendingSteps
+            const isStepsExpanded = expandedGoalIds.has(goal._id)
 
             return (
               <div key={goal._id} className='border border-slate-200 dark:border-slate-700 rounded-xl p-5'>
@@ -377,48 +389,61 @@ function GoalsPage() {
 
                 {/* Steps */}
                 {goal.steps.length > 0 ? (
-                  <div className='mt-4 space-y-2'>
-                    {goal.steps.map((step) => (
-                      <div key={step._id} className='flex items-center gap-2'>
-                        <button
-                          onClick={() => toggleStep.mutate({ id: step._id, done: !step.done })}
-                          className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors cursor-pointer ${
-                            step.done
-                              ? 'bg-teal-600 border-teal-600'
-                              : 'border-slate-300 dark:border-slate-600 hover:border-teal-400'
-                          }`}
-                        >
-                          {step.done && <Check size={10} className='text-white' strokeWidth={3} />}
-                        </button>
-                        <div
-                          onClick={() => toggleStep.mutate({ id: step._id, done: !step.done })}
-                          className='flex-1 cursor-pointer'
-                        >
-                          <p className={`text-sm transition-colors ${step.done ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>
-                            {step.title}
-                          </p>
-                          {step.description && (
-                            <p className='text-xs text-slate-400 dark:text-slate-500 mt-0.5'>{step.description}</p>
-                          )}
-                        </div>
-                        <div className='relative'>
-                          <button
-                            onClick={() => setConfirmDeleteStepId(confirmDeleteStepId === step._id ? null : step._id)}
-                            className='p-1 text-red-400 hover:text-red-600 transition-colors cursor-pointer'
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                          {confirmDeleteStepId === step._id && (
-                            <DeletePopover
-                              title='Delete step'
-                              itemName={step.title}
-                              onConfirm={() => deleteStep.mutate(step._id)}
-                              onCancel={() => setConfirmDeleteStepId(null)}
-                            />
-                          )}
-                        </div>
+                  <div className='mt-4'>
+                    <button
+                      onClick={() => toggleGoalSteps(goal._id)}
+                      aria-expanded={isStepsExpanded}
+                      className='w-full flex items-center justify-between text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer transition-colors'
+                    >
+                      <span>Steps ({doneStepsCount}/{goal.steps.length})</span>
+                      {isStepsExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    </button>
+
+                    {isStepsExpanded && (
+                      <div className='mt-2 space-y-2'>
+                        {goal.steps.map((step) => (
+                          <div key={step._id} className='flex items-center gap-2'>
+                            <button
+                              onClick={() => toggleStep.mutate({ id: step._id, done: !step.done })}
+                              className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors cursor-pointer ${
+                                step.done
+                                  ? 'bg-teal-600 border-teal-600'
+                                  : 'border-slate-300 dark:border-slate-600 hover:border-teal-400'
+                              }`}
+                            >
+                              {step.done && <Check size={10} className='text-white' strokeWidth={3} />}
+                            </button>
+                            <div
+                              onClick={() => toggleStep.mutate({ id: step._id, done: !step.done })}
+                              className='flex-1 cursor-pointer'
+                            >
+                              <p className={`text-sm transition-colors ${step.done ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>
+                                {step.title}
+                              </p>
+                              {step.description && (
+                                <p className='text-xs text-slate-400 dark:text-slate-500 mt-0.5'>{step.description}</p>
+                              )}
+                            </div>
+                            <div className='relative'>
+                              <button
+                                onClick={() => setConfirmDeleteStepId(confirmDeleteStepId === step._id ? null : step._id)}
+                                className='p-1 text-red-400 hover:text-red-600 transition-colors cursor-pointer'
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                              {confirmDeleteStepId === step._id && (
+                                <DeletePopover
+                                  title='Delete step'
+                                  itemName={step.title}
+                                  onConfirm={() => deleteStep.mutate(step._id)}
+                                  onCancel={() => setConfirmDeleteStepId(null)}
+                                />
+                              )}
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
                 ) : (
                   addingStepGoalId !== goal._id && (
@@ -426,7 +451,7 @@ function GoalsPage() {
                   )
                 )}
 
-                {goal.status !== 'completed' && (
+                {goal.status !== 'completed' && (goal.steps.length === 0 || isStepsExpanded) && (
                   <button
                     onClick={() => openAddStep(goal._id)}
                     className='mt-3 text-xs text-teal-600 hover:text-teal-700 font-medium cursor-pointer'
