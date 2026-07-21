@@ -122,4 +122,26 @@ async function changePassword(userId, currentPassword, newPassword) {
   await user.save()
 }
 
-module.exports = { signup, login, recordCheckIn, getStreak, changePassword }
+async function updateNotificationPrefs(userId, { enabled, mode, habitIds }) {
+  if (mode !== undefined && mode !== 'all' && mode !== 'specific') {
+    const err = new Error('mode must be "all" or "specific"')
+    err.status = 400
+    throw err
+  }
+
+  const user = await User.findById(userId)
+  if (!user) {
+    const err = new Error('User not found')
+    err.status = 404
+    throw err
+  }
+
+  if (enabled !== undefined) user.emailReminders.enabled = enabled
+  if (mode !== undefined) user.emailReminders.mode = mode
+  if (habitIds !== undefined) user.emailReminders.habitIds = habitIds
+
+  await user.save()
+  return user.emailReminders
+}
+
+module.exports = { signup, login, recordCheckIn, getStreak, changePassword, updateNotificationPrefs }

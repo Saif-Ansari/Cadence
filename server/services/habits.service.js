@@ -180,4 +180,4 @@ async function getConsistency(userId, localDate) {
   })
 }
 
-module.exports = { getHabits, createHabit, updateHabit, deleteHabit, logHabit, getConsistency }
+module.exports = { getHabits, createHabit, updateHabit, deleteHabit, logHabit, getConsistency, normalizeDate }

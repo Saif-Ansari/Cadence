@@ -9,5 +9,6 @@ router.post('/login', authController.login)
 router.post('/logout', authController.logout)
 router.get('/me', protect, authController.me)
 router.patch('/password', protect, authController.changePassword)
+router.patch('/notifications', protect, authController.updateNotifications)
 
 module.exports = router

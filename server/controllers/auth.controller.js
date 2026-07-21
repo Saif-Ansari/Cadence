@@ -41,7 +41,7 @@ function logout(req, res) {
 async function me(req, res) {
   const streak = await authService.getStreak(req.user._id, req.query.localDate)
   const u = req.user
-  res.json({ user: { id: u._id, name: u.name, email: u.email, loginCount: u.loginCount, streak } })
+  res.json({ user: { id: u._id, name: u.name, email: u.email, loginCount: u.loginCount, streak, emailReminders: u.emailReminders } })
 }
 
 async function changePassword(req, res) {
@@ -56,10 +56,25 @@ async function changePassword(req, res) {
   res.json({ message: 'Password updated' })
 }
 
+async function updateNotifications(req, res) {
+  const { enabled, mode, habitIds } = req.body
+
+  if (enabled !== undefined && typeof enabled !== 'boolean') {
+    return res.status(400).json({ error: { message: 'enabled must be a boolean' } })
+  }
+  if (habitIds !== undefined && !Array.isArray(habitIds)) {
+    return res.status(400).json({ error: { message: 'habitIds must be an array' } })
+  }
+
+  const emailReminders = await authService.updateNotificationPrefs(req.user._id, { enabled, mode, habitIds })
+  res.json({ emailReminders })
+}
+
 module.exports = {
   signup: asyncHandler(signup),
   login: asyncHandler(login),
   logout,
   me: asyncHandler(me),
   changePassword: asyncHandler(changePassword),
+  updateNotifications: asyncHandler(updateNotifications),
 }

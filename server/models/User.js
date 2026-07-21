@@ -22,6 +22,14 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    // Opt-in daily email reminder for undone habits. `mode: 'all'` reminds
+    // about every active habit; `mode: 'specific'` narrows it to `habitIds`.
+    // habitIds is only read when mode is 'specific'.
+    emailReminders: {
+      enabled: { type: Boolean, default: false },
+      mode: { type: String, enum: ['all', 'specific'], default: 'all' },
+      habitIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Habit' }],
+    },
   },
   { timestamps: true } // adds createdAt and updatedAt automatically
 )

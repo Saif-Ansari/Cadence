@@ -1,9 +1,17 @@
+export interface EmailReminders {
+  enabled: boolean
+  mode: 'all' | 'specific'
+  habitIds: string[]
+}
+
 export interface User {
   id: string
   name: string
   email: string
   loginCount: number
   streak?: number
+  // Only populated by GET /auth/me — signup/login responses omit it.
+  emailReminders?: EmailReminders
 }
 
 export interface AuthResponse {

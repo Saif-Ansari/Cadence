@@ -8,6 +8,7 @@ const habitsRoutes = require('./routes/habits.routes')
 const tasksRoutes = require('./routes/tasks.routes')
 const stepsRoutes = require('./routes/steps.routes')
 const reflectionsRoutes = require('./routes/reflections.routes')
+const cronRoutes = require('./routes/cron.routes')
 const errorHandler = require('./middleware/errorHandler')
 
 const app = express()
@@ -54,6 +55,7 @@ app.use('/api/habits', habitsRoutes)
 app.use('/api/tasks', tasksRoutes)
 app.use('/api/steps', stepsRoutes)
 app.use('/api/reflections', reflectionsRoutes)
+app.use('/api/cron', cronRoutes)
 
 // Unknown /api/* routes — without this Express falls through to its default
 // HTML 404 page, which breaks a client expecting { error: { code, message } }.

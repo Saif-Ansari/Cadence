@@ -1,0 +1,21 @@
+name: Habit reminders
+
+# Render's free tier spins the backend down when idle, so nothing inside it
+# can run its own cron. This workflow is the "outside caller" that wakes it
+# up once a day and asks it to send any due reminder emails.
+on:
+  schedule:
+    - cron: '30 17 * * *' # 17:30 UTC = 11:00pm IST
+  workflow_dispatch: {} # manual "Run workflow" button, for testing
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger habit reminder job
+        run: |
+          curl -f -X POST "${BACKEND_URL}/api/cron/habit-reminders" \
+            -H "x-cron-secret: ${CRON_SECRET}"
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}

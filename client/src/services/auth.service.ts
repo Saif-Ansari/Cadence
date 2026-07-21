@@ -1,6 +1,6 @@
 import { api } from '../lib/api'
 import { todayLocalDateString } from '../lib/date'
-import type { AuthResponse, User } from '../types'
+import type { AuthResponse, EmailReminders, User } from '../types'
 
 export const authService = {
   signup: (name: string, email: string, password: string) =>
@@ -14,4 +14,7 @@ export const authService = {
 
   me: () =>
     api.get<{ user: User }>(`/auth/me?localDate=${todayLocalDateString()}`),
+
+  updateNotifications: (data: Partial<EmailReminders>) =>
+    api.patch<{ emailReminders: EmailReminders }>('/auth/notifications', data),
 }
