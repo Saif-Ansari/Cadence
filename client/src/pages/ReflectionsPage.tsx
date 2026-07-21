@@ -60,12 +60,8 @@ function ReflectionsPage() {
   const queryClient = useQueryClient()
 
   // Form state
-  const [overallDay, setOverallDay] = useState('')
-  const [accomplished, setAccomplished] = useState('')
   const [win, setWin] = useState('')
   const [wastedTime, setWastedTime] = useState('')
-  const [improvement, setImprovement] = useState('')
-  const [focusScore, setFocusScore] = useState<number | null>(null)
   const [saved, setSaved] = useState(false)
 
   // Modal state
@@ -106,23 +102,15 @@ function ReflectionsPage() {
   // starts with `r` being null and the effect did nothing at all.
   useEffect(() => {
     const r = todayData?.reflection
-    setOverallDay(r?.overallDay ?? '')
-    setAccomplished(r?.accomplished ?? '')
     setWin(r?.win ?? '')
     setWastedTime(r?.wastedTime ?? '')
-    setImprovement(r?.improvement ?? '')
-    setFocusScore(r?.focusScore ?? null)
   }, [todayData?.reflection])
 
   const upsert = useMutation({
     mutationFn: () =>
       reflectionsService.upsertToday({
-        overallDay: overallDay.trim() || undefined,
-        accomplished: accomplished.trim() || undefined,
-        win: win.trim() || undefined,
-        wastedTime: wastedTime.trim() || undefined,
-        improvement: improvement.trim() || undefined,
-        focusScore: focusScore ?? undefined,
+        win: win.trim(),
+        wastedTime: wastedTime.trim(),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reflections'] })
@@ -143,7 +131,7 @@ function ReflectionsPage() {
   const reflections = allData?.reflections ?? []
   const recent = reflections.slice(0, 5)
 
-  const hasContent = overallDay || accomplished || win || wastedTime || improvement || focusScore
+  const canSave = win.trim() && wastedTime.trim()
 
   return (
     <div className='flex flex-col h-full'>
@@ -170,28 +158,6 @@ function ReflectionsPage() {
         <div className='max-w-2xl space-y-6'>
 
           <div>
-            <label className='block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2'>Overall, how was your day?</label>
-            <textarea
-              value={overallDay}
-              onChange={(e) => setOverallDay(e.target.value)}
-              placeholder='Describe how your day went overall...'
-              rows={2}
-              className='w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none'
-            />
-          </div>
-
-          <div>
-            <label className='block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2'>What did you accomplish?</label>
-            <textarea
-              value={accomplished}
-              onChange={(e) => setAccomplished(e.target.value)}
-              placeholder='List what you completed today...'
-              rows={2}
-              className='w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none'
-            />
-          </div>
-
-          <div>
             <label className='block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2'>Win of the day</label>
             <input
               type='text'
@@ -213,47 +179,11 @@ function ReflectionsPage() {
             />
           </div>
 
-          <div>
-            <label className='block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2'>What can be improved?</label>
-            <textarea
-              value={improvement}
-              onChange={(e) => setImprovement(e.target.value)}
-              placeholder='What would you do differently tomorrow?'
-              rows={2}
-              className='w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none'
-            />
-          </div>
-
-          {/* Focus score */}
-          <div>
-            <label className='block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3'>How focused were you today?</label>
-            <div className='flex flex-wrap gap-2'>
-              {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-                <button
-                  key={n}
-                  type='button'
-                  onClick={() => setFocusScore(focusScore === n ? null : n)}
-                  className={`w-10 h-10 rounded-lg text-sm font-medium border transition-colors cursor-pointer ${
-                    focusScore === n
-                      ? 'bg-teal-600 border-teal-600 text-white'
-                      : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-teal-400 hover:text-teal-600'
-                  }`}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-            <div className='flex justify-between mt-1.5'>
-              <span className='text-xs text-slate-400 dark:text-slate-500'>Scattered</span>
-              <span className='text-xs text-slate-400 dark:text-slate-500'>Deep focus</span>
-            </div>
-          </div>
-
           {/* Save button */}
           <div className='pt-2 flex items-center gap-4 flex-wrap'>
             <button
               onClick={() => upsert.mutate()}
-              disabled={!hasContent || upsert.isPending}
+              disabled={!canSave || upsert.isPending}
               className='bg-teal-600 hover:bg-teal-700 disabled:opacity-40 text-white text-sm font-medium px-6 py-2.5 rounded-xl cursor-pointer transition-colors'
             >
               {upsert.isPending ? 'Saving...' : saved ? 'Saved!' : 'Save Reflection'}
