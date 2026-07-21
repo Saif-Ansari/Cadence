@@ -12,6 +12,12 @@ import { habitsService } from '../services/habits.service'
 import { applyTheme, getStoredTheme, type Theme } from '../lib/theme'
 import type { EmailReminders } from '../types'
 
+// Backend is fully built and tested, but sending only works against Resend's
+// sandbox restrictions (delivers to the account owner's own address only)
+// until a domain is verified — hide the UI until that's done. Flip this back
+// to true once REMINDER_FROM_EMAIL is on a verified domain.
+const EMAIL_REMINDERS_ENABLED = false
+
 function NotificationsSkeleton() {
   return (
     <div className='space-y-3'>
@@ -52,11 +58,13 @@ function SettingsPage() {
   } = useQuery({
     queryKey: ['auth', 'me', 'settings'],
     queryFn: () => authService.me(),
+    enabled: EMAIL_REMINDERS_ENABLED,
   })
 
   const { data: habitsData } = useQuery({
     queryKey: ['habits'],
     queryFn: () => habitsService.getHabits(),
+    enabled: EMAIL_REMINDERS_ENABLED,
   })
   const habits = habitsData?.habits ?? []
 
@@ -253,7 +261,8 @@ function SettingsPage() {
           </div>
         </div>
 
-        {/* Notifications card */}
+        {/* Notifications card — hidden until Resend domain verification is done, see EMAIL_REMINDERS_ENABLED above */}
+        {EMAIL_REMINDERS_ENABLED && (
         <div className='border border-slate-200 dark:border-slate-700 rounded-2xl p-6'>
           <h2 className='text-base font-semibold text-slate-900 dark:text-slate-100 mb-5'>Email reminders</h2>
 
@@ -359,6 +368,7 @@ function SettingsPage() {
             )}
           </QueryState>
         </div>
+        )}
 
       </div>
       {/* end right column */}
