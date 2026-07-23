@@ -4,8 +4,12 @@ name: Habit reminders
 # can run its own cron. This workflow is the "outside caller" that wakes it
 # up once a day and asks it to send any due reminder emails.
 on:
-  schedule:
-    - cron: '30 17 * * *' # 17:30 UTC = 11:00pm IST
+  # Schedule disabled until the email reminders UI is re-enabled (hidden in
+  # a6a4d81 pending Resend domain verification) — nightly runs were failing
+  # against a feature no one can turn on. Re-enable this trigger once
+  # EMAIL_REMINDERS_ENABLED flips back to true in SettingsPage.tsx.
+  # schedule:
+  #   - cron: '30 17 * * *' # 17:30 UTC = 11:00pm IST
   workflow_dispatch: {} # manual "Run workflow" button, for testing
 
 jobs:
